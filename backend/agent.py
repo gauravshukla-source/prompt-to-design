@@ -62,12 +62,22 @@ Output format:
 Return a JSON object that strictly adheres to the requested DiagramSchema.
 """
 
+def get_gemini_client(api_key: str = None) -> genai.Client:
+    gcp_project = os.environ.get("GCP_PROJECT_ID") or os.environ.get("GOOGLE_CLOUD_PROJECT")
+    gcp_location = os.environ.get("GCP_LOCATION", "us-central1")
+    
+    if gcp_project:
+        # Vertex AI Authentication (reads gcloud auth active account or service account file)
+        return genai.Client(vertexai=True, project=gcp_project, location=gcp_location)
+    else:
+        # standard API Key Authentication
+        key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not key:
+            raise ValueError("Authentication missing. Please set GEMINI_API_KEY, supply key in settings, or configure GOOGLE_CLOUD_PROJECT for Vertex AI.")
+        return genai.Client(api_key=key)
+
 def generate_diagram(prompt: str, custom_icons: list = None, api_key: str = None) -> dict:
-    key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not key:
-        raise ValueError("Gemini API Key is missing. Please set it in settings or environment.")
-        
-    client = genai.Client(api_key=key)
+    client = get_gemini_client(api_key)
     
     custom_context_str = ""
     if custom_icons:
@@ -91,11 +101,7 @@ def generate_diagram(prompt: str, custom_icons: list = None, api_key: str = None
     return json.loads(response.text)
 
 def refine_diagram(prompt: str, current_diagram: dict, custom_icons: list = None, api_key: str = None) -> dict:
-    key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not key:
-        raise ValueError("Gemini API Key is missing.")
-
-    client = genai.Client(api_key=key)
+    client = get_gemini_client(api_key)
     
     custom_context_str = ""
     if custom_icons:

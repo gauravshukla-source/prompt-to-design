@@ -1,0 +1,80 @@
+/* Custom Scrollbar Styles for Sleek UI */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0c0c0e;
+}
+::-webkit-scrollbar-thumb {
+    background: #2c2c2e;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3a3a3c;
+}
+
+/* Base Body Styles */
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cytoscape Container */
+#cy {
+    background-color: #0c0c0e;
+    background-image: 
+        radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 24px 24px, 48px 48px;
+    background-position: 0 0, 12px 12px;
+}
+
+/* Glassmorphism layouts */
+.backdrop-blur-md {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* Pulsing highlight for selected node or processing */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(0, 112, 243, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(0, 112, 243, 0.8);
+    }
+}
+
+.selected-element-glow {
+    animation: pulse-glow 2s infinite ease-in-out;
+}
+
+/* Cytoscape custom HTML nodes or overlays */
+.cy-node-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: #cbd5e1;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+/* Dynamic slide animation for sidebar panels */
+.panel-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* CSS reset / Tailwind extensions */
+select option {
+    background-color: #1c1c1e;
+    color: #cbd5e1;
+}
+
+/* Fade-in for loaders */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+}

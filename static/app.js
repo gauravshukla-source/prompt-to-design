@@ -576,11 +576,7 @@ btnGen.addEventListener("click", async () => {
     const prompt = promptInput.value.trim();
     if (!prompt) return;
     
-    const key = getAPIKey();
-    if (!key) {
-        alert("Please set your Gemini API Key in the top menu.");
-        return;
-    }
+    const key = getAPIKey(); // optional: passed if user set one manually
     
     loader.classList.remove("hidden");
     
@@ -593,12 +589,11 @@ btnGen.addEventListener("click", async () => {
     promptInput.value = "";
     
     try {
+        const headers = { "Content-Type": "application/json" };
+        if (key) headers["X-Gemini-Key"] = key; // only send if user has set one
         const res = await fetch(url, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-Gemini-Key": key
-            },
+            headers,
             body: JSON.stringify(payload)
         });
         

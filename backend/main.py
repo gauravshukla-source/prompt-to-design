@@ -10,6 +10,16 @@ from pydantic import BaseModel
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Load .env file manually at startup
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            if line.strip() and not line.startswith("#"):
+                parts = line.strip().split("=", 1)
+                if len(parts) == 2:
+                    os.environ[parts[0].strip()] = parts[1].strip()
+
 import database
 import agent
 

@@ -127,7 +127,7 @@ def generate_diagram(prompt: str, custom_icons: list = None, api_key: str = None
     )
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-3.1-flash-lite",
         contents=f"Generate a diagram for the following prompt:\n{prompt}",
         config=config
     )
@@ -159,7 +159,7 @@ Current Diagram State:
     )
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-3.1-flash-lite",
         contents=f"Apply the following modifications: {prompt}",
         config=config
     )

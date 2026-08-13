@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 import google.auth
-import google.auth.transport.requests
+
 
 # Pydantic models for Structured Output
 class NodeProperty(BaseModel):
@@ -82,14 +82,8 @@ def get_gemini_client(api_key: str = None) -> genai.Client:
         credentials, _ = google.auth.default(
             scopes=["https://www.googleapis.com/auth/generative-language"]
         )
-        request = google.auth.transport.requests.Request()
-        credentials.refresh(request)
-        return genai.Client(
-            http_options={
-                "headers": {"Authorization": f"Bearer {credentials.token}"}
-            },
-            api_key="NOT_USED"  # sdk requires this field; overridden by Bearer header
-        )
+        # Pass credentials directly — avoids sending any api_key at all
+        return genai.Client(credentials=credentials)
     except Exception:
         # ADC not available (e.g. plain local dev without gcloud login)
         pass

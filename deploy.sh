@@ -1,7 +1,11 @@
 #!/bin/bash
 # ============================================================
 # deploy.sh — Build & deploy to Cloud Run via gcloud
-# Run this in Google Cloud Shell or any machine with gcloud installed.
+# Run this in Google Cloud Shell.
+# Required roles for your account:
+#   - Cloud Run Admin  (roles/run.admin)
+#   - Service Account User  (roles/iam.serviceAccountUser)
+#   - Storage Admin  (roles/storage.admin)  — for container registry
 # ============================================================
 
 set -e
@@ -15,9 +19,8 @@ gcloud config set project $PROJECT_ID
 
 echo ">>> Enabling required APIs..."
 gcloud services enable \
-  cloudbuild.googleapis.com \
   run.googleapis.com \
-  containerregistry.googleapis.com \
+  artifactregistry.googleapis.com \
   generativelanguage.googleapis.com \
   --project=$PROJECT_ID
 
@@ -32,9 +35,12 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --role="roles/aiplatform.user" \
   --quiet
 
-echo ">>> Building and deploying via Cloud Build..."
-gcloud builds submit \
-  --config cloudbuild.yaml \
+echo ">>> Building and deploying to Cloud Run (this may take a few minutes)..."
+gcloud run deploy $SERVICE_NAME \
+  --source . \
+  --region=$REGION \
+  --platform=managed \
+  --allow-unauthenticated \
   --project=$PROJECT_ID
 
 echo ""
@@ -43,3 +49,4 @@ gcloud run services describe $SERVICE_NAME \
   --region=$REGION \
   --project=$PROJECT_ID \
   --format='value(status.url)'
+

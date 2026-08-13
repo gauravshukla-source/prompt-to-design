@@ -70,6 +70,14 @@ def get_gemini_client(api_key: str = None) -> genai.Client:
     # Priority 1: Explicit API key passed from request header or env var
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if key:
+        key = key.strip()
+        if key.startswith("AQ."):
+            # Workaround for new Google Auth Keys (AQ.) - pass them as a Bearer token in http_options
+            # and use a dummy api_key to satisfy the client initialization check
+            return genai.Client(
+                api_key="DUMMY_KEY",
+                http_options={"headers": {"Authorization": f"Bearer {key}"}}
+            )
         return genai.Client(api_key=key)
 
     # Priority 2: Vertex AI via Application Default Credentials (for Cloud Run / GCP deployment)
@@ -97,7 +105,7 @@ def generate_diagram(prompt: str, custom_icons: list = None, api_key: str = None
     )
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.0-flash",
         contents=f"Generate a diagram for the following prompt:\n{prompt}",
         config=config
     )
@@ -129,7 +137,7 @@ Current Diagram State:
     )
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.0-flash",
         contents=f"Apply the following modifications: {prompt}",
         config=config
     )

@@ -71,38 +71,33 @@ Return a JSON object that strictly adheres to the requested DiagramSchema.
 def get_gemini_client(api_key: str = None) -> genai.Client:
     """
     Authentication priority:
-    1. On GCP (Cloud Run): Use Application Default Credentials (ADC) via
-       google.auth.default(). The Cloud Run service account identity is
-       provided automatically — no API key required.
-    2. Local development fallback: Use GEMINI_API_KEY from .env.
+    1. Always try Application Default Credentials (ADC) first.
+       - On Cloud Run: the metadata server provides a token automatically.
+       - Locally with gcloud auth: uses your gcloud credentials.
+    2. Fallback: GEMINI_API_KEY from the request header or .env file.
     """
-    # Priority 1: GCP / Cloud Run — use ADC (service account identity)
-    # Detected when GOOGLE_CLOUD_PROJECT is set (Cloud Run sets this automatically)
-    # or when GCP_PROJECT_ID is explicitly configured.
-    gcp_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_PROJECT_ID")
-    if gcp_project:
-        try:
-            credentials, project = google.auth.default(
-                scopes=["https://www.googleapis.com/auth/generative-language"]
-            )
-            # Refresh credentials so the access token is populated
-            request = google.auth.transport.requests.Request()
-            credentials.refresh(request)
-            return genai.Client(
-                http_options={
-                    "headers": {"Authorization": f"Bearer {credentials.token}"}
-                },
-                api_key="NOT_USED"  # required field but overridden by the Bearer header
-            )
-        except google.auth.exceptions.DefaultCredentialsError:
-            # ADC not available; fall through to API key
-            pass
+    # Priority 1: ADC — works automatically on Cloud Run, Compute Engine,
+    # and locally when 'gcloud auth application-default login' has been run.
+    try:
+        credentials, _ = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/generative-language"]
+        )
+        request = google.auth.transport.requests.Request()
+        credentials.refresh(request)
+        return genai.Client(
+            http_options={
+                "headers": {"Authorization": f"Bearer {credentials.token}"}
+            },
+            api_key="NOT_USED"  # sdk requires this field; overridden by Bearer header
+        )
+    except Exception:
+        # ADC not available (e.g. plain local dev without gcloud login)
+        pass
 
-    # Priority 2: Local development — API key from .env
+    # Priority 2: API key from request header or .env
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if key:
-        key = key.strip()
-        return genai.Client(api_key=key)
+        return genai.Client(api_key=key.strip())
 
     raise ValueError(
         "Authentication missing. On Cloud Run, ensure the service account has the "

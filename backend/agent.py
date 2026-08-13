@@ -1,9 +1,11 @@
 import os
 import json
-from typing import List, Optional, Dict
+from typing import List, Optional
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
+import google.auth
+import google.auth.transport.requests
 
 # Pydantic models for Structured Output
 class NodeProperty(BaseModel):
@@ -67,26 +69,46 @@ Return a JSON object that strictly adheres to the requested DiagramSchema.
 """
 
 def get_gemini_client(api_key: str = None) -> genai.Client:
-    # Priority 1: Explicit API key passed from request header or env var
+    """
+    Authentication priority:
+    1. On GCP (Cloud Run): Use Application Default Credentials (ADC) via
+       google.auth.default(). The Cloud Run service account identity is
+       provided automatically — no API key required.
+    2. Local development fallback: Use GEMINI_API_KEY from .env.
+    """
+    # Priority 1: GCP / Cloud Run — use ADC (service account identity)
+    # Detected when GOOGLE_CLOUD_PROJECT is set (Cloud Run sets this automatically)
+    # or when GCP_PROJECT_ID is explicitly configured.
+    gcp_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_PROJECT_ID")
+    if gcp_project:
+        try:
+            credentials, project = google.auth.default(
+                scopes=["https://www.googleapis.com/auth/generative-language"]
+            )
+            # Refresh credentials so the access token is populated
+            request = google.auth.transport.requests.Request()
+            credentials.refresh(request)
+            return genai.Client(
+                http_options={
+                    "headers": {"Authorization": f"Bearer {credentials.token}"}
+                },
+                api_key="NOT_USED"  # required field but overridden by the Bearer header
+            )
+        except google.auth.exceptions.DefaultCredentialsError:
+            # ADC not available; fall through to API key
+            pass
+
+    # Priority 2: Local development — API key from .env
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if key:
         key = key.strip()
-        if key.startswith("AQ."):
-            # Workaround for new Google Auth Keys (AQ.) - pass them as a Bearer token in http_options
-            # and use a dummy api_key to satisfy the client initialization check
-            return genai.Client(
-                api_key="DUMMY_KEY",
-                http_options={"headers": {"Authorization": f"Bearer {key}"}}
-            )
         return genai.Client(api_key=key)
 
-    # Priority 2: Vertex AI via Application Default Credentials (for Cloud Run / GCP deployment)
-    gcp_project = os.environ.get("GCP_PROJECT_ID") or os.environ.get("GOOGLE_CLOUD_PROJECT")
-    gcp_location = os.environ.get("GCP_LOCATION", "us-central1")
-    if gcp_project:
-        return genai.Client(vertexai=True, project=gcp_project, location=gcp_location)
-
-    raise ValueError("Authentication missing. Set GEMINI_API_KEY in your .env file, or configure GOOGLE_CLOUD_PROJECT for Vertex AI on GCP.")
+    raise ValueError(
+        "Authentication missing. On Cloud Run, ensure the service account has the "
+        "'AI Platform User' role and that 'Generative Language API' is enabled. "
+        "For local development, set GEMINI_API_KEY in your .env file."
+    )
 
 def generate_diagram(prompt: str, custom_icons: list = None, api_key: str = None) -> dict:
     client = get_gemini_client(api_key)

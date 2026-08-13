@@ -6,12 +6,16 @@ from google import genai
 from google.genai import types
 
 # Pydantic models for Structured Output
+class NodeProperty(BaseModel):
+    key: str
+    value: str
+
 class NodeData(BaseModel):
     label: str
     icon: Optional[str] = Field(None, description="Standard icon slug (e.g., 'aws-api-gateway', 'aws-rds', 'aws-ecs', 'aws-s3', 'aws-lambda', 'azure-sql', 'azure-app-service', 'azure-vm', 'active-directory', 'kubernetes', 'gcp-cloud-run', 'gcp-gcs') or a custom icon tag")
     category: Optional[str] = Field(None, description="e.g., 'compute', 'database', 'network', 'security', 'integration', 'general'")
     description: Optional[str] = Field(None, description="Brief description of node function")
-    properties: Optional[Dict[str, str]] = Field(None, description="Key-value pairs for node properties (e.g., instance size, multi-az)")
+    properties: Optional[List[NodeProperty]] = Field(None, description="Key-value pairs for node properties (e.g., instance size, multi-az)")
 
 class Node(BaseModel):
     id: str
@@ -63,18 +67,18 @@ Return a JSON object that strictly adheres to the requested DiagramSchema.
 """
 
 def get_gemini_client(api_key: str = None) -> genai.Client:
+    # Priority 1: Explicit API key passed from request header or env var
+    key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if key:
+        return genai.Client(api_key=key)
+
+    # Priority 2: Vertex AI via Application Default Credentials (for Cloud Run / GCP deployment)
     gcp_project = os.environ.get("GCP_PROJECT_ID") or os.environ.get("GOOGLE_CLOUD_PROJECT")
     gcp_location = os.environ.get("GCP_LOCATION", "us-central1")
-    
     if gcp_project:
-        # Vertex AI Authentication (reads gcloud auth active account or service account file)
         return genai.Client(vertexai=True, project=gcp_project, location=gcp_location)
-    else:
-        # standard API Key Authentication
-        key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if not key:
-            raise ValueError("Authentication missing. Please set GEMINI_API_KEY, supply key in settings, or configure GOOGLE_CLOUD_PROJECT for Vertex AI.")
-        return genai.Client(api_key=key)
+
+    raise ValueError("Authentication missing. Set GEMINI_API_KEY in your .env file, or configure GOOGLE_CLOUD_PROJECT for Vertex AI on GCP.")
 
 def generate_diagram(prompt: str, custom_icons: list = None, api_key: str = None) -> dict:
     client = get_gemini_client(api_key)

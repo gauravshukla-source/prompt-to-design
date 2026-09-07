@@ -290,150 +290,192 @@ function initCanvas() {
 function canvasZoomIn() { cy.zoom(cy.zoom() * 1.2); }
 function canvasZoomOut() { cy.zoom(cy.zoom() * 0.8); }
 function canvasFit() { cy.fit(); }
-
-// Deterministic architecture layout. Avoids compound-node overlap and makes connectivity readable.
-function inferPatternFromCanvas() {
-    const explicit = cy.data ? cy.data('pattern') : null;
-    if (explicit) return explicit;
-    const labels = cy.nodes().map(n => `${n.data('label')} ${n.data('icon')}`).join(' ').toLowerCase();
-    if (/saviynt|identity governance|iga|scim/.test(labels)) return 'iam';
-    if (/kafka|rabbitmq|event/.test(labels)) return 'event_driven';
-    if (/microservice|service|kubernetes|ecs/.test(labels)) return 'microservices';
-    return 'generic';
-
+// ---------------------------------------------------------------------------
+// Phase 5.2 — Architecture Pattern Layout Engine
+// Template-driven composition. Node positions are determined by architecture
+// semantics first; connectors and boundaries are applied afterwards.
+// ---------------------------------------------------------------------------
+function architectureText(nodes) {
+    return nodes.map(n => `${n.data('label') || ''} ${n.data('icon') || ''} ${n.data('category') || ''} ${n.data('role') || ''}`).join(' ').toLowerCase();
 }
 
-function roleOrder(pattern) {
-    const common = ['external_actor','edge_entry','security_control','identity_provider','traffic_router','primary_component','infrastructure_container','peer_service','integration','event_backbone','transactional_data','data_store','cache','target_application','observability'];
-    const maps = {
-        iam: ['external_actor','identity_provider','primary_component','target_application','integration','observability'],
-        event_driven: ['external_actor','peer_service','event_backbone','integration','data_store','target_application'],
-        hybrid_cloud: ['external_actor','edge_entry','traffic_router','primary_component','integration','peer_service','transactional_data','data_store'],
-        data_pipeline: ['external_actor','integration','peer_service','data_store','transactional_data','observability']
+function inferPatternFromCanvas() {
+    if (!cy) return 'generic';
+    const explicit = cy.data('pattern');
+    if (explicit && explicit !== 'generic') return explicit;
+    const nodes = cy.nodes().filter(n => n.data('type') !== 'group');
+    const text = architectureText(nodes);
+    if (/(saviynt|identity governance|\biga\b|identity provider|entra|okta|active directory|scim)/.test(text)) return 'iam';
+    if (/(kafka|rabbitmq|event bus|pubsub|service bus|event-driven)/.test(text)) return 'event_driven';
+    if (/(direct connect|expressroute|hybrid cloud|on-prem|on premises|\bvpn\b)/.test(text)) return 'hybrid_cloud';
+    if (/(zero trust|conditional access|device posture|policy engine)/.test(text)) return 'zero_trust';
+    if (/(data lake|data warehouse|ingestion|etl|pipeline|spark|bigquery)/.test(text)) return 'data_pipeline';
+    if (/(kubernetes|microservice|ecs cluster)/.test(text)) return 'microservices';
+    if (/(vpc|subnet|load balancer|\balb\b)/.test(text) && /(rds|database|dynamodb|cache)/.test(text)) return 'three_tier';
+    return 'generic';
+}
+
+function phase52Role(node) {
+    const existing = String(node.data('role') || '').toLowerCase();
+    if (existing && existing !== 'peer_service') return existing;
+    const t = `${node.data('label') || ''} ${node.data('icon') || ''} ${node.data('category') || ''}`.toLowerCase();
+    if (/(saviynt|identity governance|\biga\b)/.test(t)) return 'primary_component';
+    if (/(entra|okta|identity provider|active directory|ldap)/.test(t)) return 'identity_provider';
+    if (/(user|employee|admin|browser|client)/.test(t)) return 'external_actor';
+    if (/(kafka|rabbitmq|event bus|pubsub|service bus)/.test(t)) return 'event_backbone';
+    if (/(rds|database|sql|postgres|mongo|dynamodb)/.test(t)) return 'data_store';
+    if (/(redis|cache|elasticache)/.test(t)) return 'cache';
+    if (/(service now|salesforce|workday|aws iam|target application|saas)/.test(t)) return 'target_application';
+    if (/(gateway|load balancer|\balb\b|api gateway)/.test(t)) return 'traffic_router';
+    if (/(waf|firewall|policy|mfa|security)/.test(t)) return 'security_control';
+    return existing || 'peer_service';
+}
+
+function layoutHelpers() {
+    const nodes = cy.nodes().filter(n => n.data('type') !== 'group');
+    const centerY = 430;
+    const sort = list => [...list].sort((a,b) => String(a.data('label') || '').localeCompare(String(b.data('label') || '')));
+    const col = (list, x, spacing=125, cyY=centerY) => {
+        list = sort(list);
+        const top = cyY - ((list.length - 1) * spacing) / 2;
+        list.forEach((n,i) => n.position({x, y:top + i*spacing}));
     };
-    return maps[pattern] || common;
+    const row = (list, x, y, spacing=175) => {
+        list = sort(list);
+        const left = x - ((list.length - 1) * spacing) / 2;
+        list.forEach((n,i) => n.position({x:left+i*spacing,y}));
+    };
+    const byRole = role => nodes.filter(n => phase52Role(n) === role);
+    const textHas = (n, words) => words.some(w => `${n.data('label') || ''} ${n.data('icon') || ''} ${n.data('category') || ''}`.toLowerCase().includes(w));
+    return {nodes, centerY, sort, col, row, byRole, textHas};
+}
+
+function layoutIAM(h) {
+    const {nodes, centerY, col, row, byRole, textHas} = h;
+    const users = byRole('external_actor');
+    const primary = byRole('primary_component');
+    const idps = byRole('identity_provider');
+    const targets = byRole('target_application');
+    const source = nodes.filter(n => !primary.includes(n) && textHas(n, ['active directory','ldap','hr source','identity source']) && !users.includes(n));
+    const idpOnly = idps.filter(n => !source.includes(n));
+    const consumed = new Set([...users,...primary,...idps,...targets]);
+    const extras = nodes.filter(n => !consumed.has(n));
+
+    // IAM is deliberately a flow + hub template, not a generic grid.
+    col([...users, ...source], 150, 135);
+    col(idpOnly.length ? idpOnly : idps, 400, 135);
+    col(primary, 680, 150);
+    row(targets, 1040, centerY, 180);
+    // Supporting controls stay close to the central IGA platform rather than far away.
+    row(extras, 680, centerY + 235, 165);
+}
+
+function layoutHubSpoke(h, hub) {
+    const {nodes, centerY, row} = h;
+    const spokes = nodes.filter(n => n.id() !== hub.id());
+    hub.position({x:620,y:centerY});
+    const upper = spokes.filter((_,i)=>i%2===0);
+    const lower = spokes.filter((_,i)=>i%2===1);
+    row(upper, 620, 220, 185);
+    row(lower, 620, 650, 185);
+}
+
+function layoutThreeTier(h) {
+    const {nodes, centerY, col, row, textHas} = h;
+    const edge = nodes.filter(n => textHas(n,['user','client','route 53','dns','cloudfront','waf']));
+    const router = nodes.filter(n => !edge.includes(n) && textHas(n,['alb','load balancer','gateway','api gateway']));
+    const data = nodes.filter(n => textHas(n,['rds','database','dynamodb','redis','cache','elasticache']));
+    const apps = nodes.filter(n => !edge.includes(n)&&!router.includes(n)&&!data.includes(n));
+    col(edge,130,105); col(router,360,120); row(apps,650,centerY,175); row(data,980,centerY,170);
+}
+
+function layoutMicroservices(h) {
+    const {nodes, centerY, col, row, textHas} = h;
+    const entry=nodes.filter(n=>textHas(n,['user','client','gateway','api gateway','load balancer','alb']));
+    const broker=nodes.filter(n=>textHas(n,['kafka','rabbitmq','pubsub','service bus','event bus']));
+    const data=nodes.filter(n=>textHas(n,['database','rds','sql','dynamodb','redis','cache']));
+    const services=nodes.filter(n=>!entry.includes(n)&&!broker.includes(n)&&!data.includes(n));
+    col(entry,130,120); row(services,480,centerY,165); col(broker,780,120); row(data,1050,centerY,165);
+}
+
+function layoutEventDriven(h) {
+    const {nodes, centerY, col, row, byRole} = h;
+    const broker=byRole('event_backbone');
+    const brokerSet=new Set(broker);
+    const producers=nodes.filter(n=>!brokerSet.has(n)&&!/(notification|analytics|processing|consumer|warehouse|lake)/i.test(String(n.data('label')||'')));
+    const consumers=nodes.filter(n=>!brokerSet.has(n)&&!producers.includes(n));
+    col(producers,230,130); col(broker,600,120); col(consumers,970,130);
+}
+
+function layoutPipeline(h) {
+    const {nodes, centerY, col, row, textHas} = h;
+    const source=nodes.filter(n=>textHas(n,['salesforce','sap','source','postgres','csv','file','rest api']));
+    const ingest=nodes.filter(n=>textHas(n,['ingest','kafka','batch']));
+    const process=nodes.filter(n=>textHas(n,['spark','transform','etl','process']));
+    const target=nodes.filter(n=>!source.includes(n)&&!ingest.includes(n)&&!process.includes(n));
+    col(source,130,115); col(ingest,380,120); col(process,630,120); row(target,940,centerY,170);
+}
+
+function layoutGeneric(h) {
+    const {nodes, centerY, col} = h;
+    const ranks = ['external_actor','edge_entry','traffic_router','identity_provider','security_control','primary_component','peer_service','integration','event_backbone','data_store','cache','target_application','observability'];
+    const buckets = new Map();
+    nodes.forEach(n => { const r=phase52Role(n); const k=Math.max(0,ranks.indexOf(r)); if(!buckets.has(k)) buckets.set(k,[]); buckets.get(k).push(n); });
+    [...buckets.keys()].sort((a,b)=>a-b).forEach((k,i)=>col(buckets.get(k),120+i*220,120,centerY));
+}
+
+function applyBoundaryClasses() {
+    cy.nodes('[type = "group"]').forEach(g => {
+        const gt=String(g.data('group_type')||'generic').toLowerCase();
+        g.removeClass('pattern-cloud pattern-network pattern-subtle');
+        if (['vpc','azureresourcegroup','generic','kubernetescluster'].includes(gt)) g.addClass('pattern-cloud');
+        else if (['subnet','securitygroup'].includes(gt)) g.addClass('pattern-network');
+        else g.addClass('pattern-subtle');
+    });
 }
 
 function edgeSemanticStyle() {
     cy.edges().forEach(e => {
-        const kind = e.data('kind') || 'sync';
-        const direction = e.data('direction') || 'forward';
-        const importance = e.data('importance') || 'normal';
-        const style = {
-            'line-style': kind === 'async' ? 'dashed' : 'solid',
-            'target-arrow-shape': direction === 'bidirectional' ? 'triangle' : 'triangle',
-            'source-arrow-shape': direction === 'bidirectional' ? 'triangle' : 'none',
-            'width': importance === 'primary' ? 3 : importance === 'supporting' ? 1 : 2,
-            'curve-style': 'taxi',
-            'taxi-direction': 'rightward',
-            'taxi-turn': '45%',
-            'taxi-turn-min-distance': 30
+        const kind=String(e.data('kind')||'sync').toLowerCase();
+        const direction=String(e.data('direction')||'forward').toLowerCase();
+        const importance=String(e.data('importance')||'normal').toLowerCase();
+        const style={
+            'line-style':kind==='async'?'dashed':'solid',
+            'target-arrow-shape':'triangle',
+            'source-arrow-shape':direction==='bidirectional'?'triangle':'none',
+            'width':importance==='primary'?3:importance==='supporting'?1.5:2,
+            'curve-style':'taxi',
+            'taxi-direction':'rightward',
+            'taxi-turn':'50%',
+            'taxi-turn-min-distance':35
         };
-        if (kind === 'auth') Object.assign(style, {'line-color':'#4a78ff','target-arrow-color':'#4a78ff','source-arrow-color':'#4a78ff'});
-        if (kind === 'async') Object.assign(style, {'line-color':'#a56eff','target-arrow-color':'#a56eff','source-arrow-color':'#a56eff'});
-        if (kind === 'data') Object.assign(style, {'line-color':'#36b37e','target-arrow-color':'#36b37e','source-arrow-color':'#36b37e'});
+        if(kind==='auth') Object.assign(style,{'line-color':'#4a78ff','target-arrow-color':'#4a78ff','source-arrow-color':'#4a78ff'});
+        else if(kind==='async') Object.assign(style,{'line-color':'#a56eff','target-arrow-color':'#a56eff','source-arrow-color':'#a56eff'});
+        else if(kind==='data') Object.assign(style,{'line-color':'#36b37e','target-arrow-color':'#36b37e','source-arrow-color':'#36b37e'});
+        else if(kind==='control') Object.assign(style,{'line-color':'#d97706','target-arrow-color':'#d97706','source-arrow-color':'#d97706'});
         e.style(style);
     });
 }
 
-// Phase 5.1: architecture composition engine. Places primary flow, peer groups and data peers deterministically.
-function canvasAutoLayout() {
-    if (!cy || cy.nodes().length === 0) return;
-    const pattern = cy.data('pattern') || inferPatternFromCanvas();
-    const nodes = cy.nodes().filter(n => n.data('type') !== 'group');
-    const order = roleOrder(pattern);
-    const rank = new Map(order.map((r,i)=>[r,i]));
-    const columns = new Map();
-
-    nodes.forEach(n => {
-        const role = n.data('role') || 'peer_service';
-        const layer = Number(n.data('layer'));
-        const key = Number.isFinite(layer) ? layer : (rank.get(role) ?? 6);
-        if (!columns.has(key)) columns.set(key, []);
-        columns.get(key).push(n);
-    });
-
-    const sorted = [...columns.keys()].sort((a,b)=>a-b);
-    const xGap = 210, yGap = 120, centerY = 330;
-    sorted.forEach((key, colIndex) => {
-        const list = columns.get(key).sort((a,b) => {
-            const ai = a.data('importance') === 'primary' ? 0 : 1;
-            const bi = b.data('importance') === 'primary' ? 0 : 1;
-            return ai-bi || String(a.data('peerGroup')||'').localeCompare(String(b.data('peerGroup')||'')) || a.data('label').localeCompare(b.data('label'));
-        });
-        const grouped = new Map();
-        list.forEach(n => {
-            const g = n.data('peerGroup') || n.data('role') || n.id();
-            if (!grouped.has(g)) grouped.set(g, []);
-            grouped.get(g).push(n);
-        });
-        const flattened=[...grouped.values()].flat();
-        const startY = centerY - ((flattened.length-1)*yGap)/2;
-        flattened.forEach((n,i) => n.position({x: 130 + colIndex*xGap, y: startY + i*yGap}));
-    });
-
-    // IAM: enforce identity -> IGA -> targets visual spine.
-    if (pattern === 'iam') {
-        const byRole = role => nodes.filter(n=>n.data('role')===role);
-        const actors=byRole('external_actor'), idp=byRole('identity_provider'), primary=byRole('primary_component'), targets=byRole('target_application');
-        const place=(list,x)=>list.forEach((n,i)=>n.position({x,y:centerY+(i-(list.length-1)/2)*yGap}));
-        let x=120; place(actors,x); x+=220; place(idp,x); x+=230; place(primary,x); x+=260; place(targets,x);
-    }
-    // Event backbone stays central; producers and consumers are parallel peers.
-    if (pattern === 'event_driven') {
-        const broker=nodes.filter(n=>n.data('role')==='event_backbone');
-        broker.forEach((n,i)=>n.position({x:560,y:centerY+i*100}));
-    }
-
-    // Build compound boundaries from inside out.
-    // IMPORTANT: Cytoscape's move({parent:null}) changes the live parent relationship.
-    // Save BOTH node and group parents before detaching, otherwise boundaries become empty.
-    const groups = cy.nodes('[type = "group"]');
-    const groupParents = new Map();
-    const nodeParents = new Map();
-
-    groups.forEach(g => groupParents.set(g.id(), g.parent().nonempty() ? g.parent().id() : (g.data('parent') || null)));
-    nodes.forEach(n => nodeParents.set(n.id(), n.parent().nonempty() ? n.parent().id() : (n.data('parent') || null)));
-
-    // Detach everything so application nodes keep absolute positions while boundaries are rebuilt.
-    groups.forEach(g => g.move({parent: null}));
-    nodes.forEach(n => n.move({parent: null}));
-
-    const depth = g => {
-        let d = 0;
-        let parentId = groupParents.get(g.id());
-        while (parentId) {
-            d += 1;
-            parentId = groupParents.get(parentId);
-        }
-        return d;
-    };
-
-    // Restore deepest groups first. Their application children are restored using nodeParents,
-    // then nested groups are restored using groupParents. Compound boundaries auto-size around children.
-    groups.sort((a, b) => depth(b) - depth(a)).forEach(g => {
-        const directNodes = nodes.filter(n => nodeParents.get(n.id()) === g.id());
-        const directGroups = groups.filter(child => groupParents.get(child.id()) === g.id());
-
-        directNodes.forEach(n => n.move({parent: g.id()}));
-        directGroups.forEach(child => child.move({parent: g.id()}));
-
-        const children = directNodes.union(directGroups);
-        if (children.nonempty()) {
-            const bb = children.boundingBox({includeLabels: true});
-            g.position({
-                x: bb.x1 + bb.w / 2,
-                y: bb.y1 + bb.h / 2
-            });
-        }
-    });
-
-    // Restore top-level groups that have no parent. This is intentionally done after all
-    // child relationships have been rebuilt so AWS Cloud -> VPC -> Subnet containment is preserved.
-    groups.filter(g => !groupParents.get(g.id())).forEach(g => g.move({parent: null}));
+function canvasAutoLayout(dsl = {}) {
+    if (!cy || cy.nodes().length===0) return;
+    const pattern=String(dsl.pattern || cy.data('pattern') || inferPatternFromCanvas()).toLowerCase();
+    cy.data('pattern',pattern);
+    const h=layoutHelpers();
+    if(pattern==='iam') layoutIAM(h);
+    else if(pattern==='event_driven') layoutEventDriven(h);
+    else if(pattern==='microservices') layoutMicroservices(h);
+    else if(pattern==='three_tier') layoutThreeTier(h);
+    else if(pattern==='data_pipeline') layoutPipeline(h);
+    else if(pattern==='hub_spoke') {
+        const hub=h.nodes.find(n=>n.data('importance')==='primary'||phase52Role(n)==='primary_component');
+        if(hub) layoutHubSpoke(h,hub); else layoutGeneric(h);
+    } else layoutGeneric(h);
+    applyBoundaryClasses();
     edgeSemanticStyle();
-    cy.fit(cy.elements(), 65);
+    cy.fit(cy.elements(),75);
 }
+
 // Project Logic
 async function loadProjects() {
     try {

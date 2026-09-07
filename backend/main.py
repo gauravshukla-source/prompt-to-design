@@ -1,7 +1,6 @@
 import os
 import uuid
 import shutil
-import logging
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,9 +22,6 @@ if os.path.exists(env_path):
 
 import database
 import agent
-
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
-logger = logging.getLogger("architecture-generator")
 
 app = FastAPI(title="Prompt to Design Diagram Generator API")
 
@@ -108,8 +104,7 @@ def generate_diagram(req: GenerateRequest):
         diagram_data = agent.generate_diagram(req.prompt, custom_icons)
         return diagram_data
     except Exception as e:
-        logger.exception("Diagram generation failed")
-        raise HTTPException(status_code=500, detail=f"Diagram generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/refine")
 def refine_diagram(req: RefineRequest):
@@ -118,8 +113,7 @@ def refine_diagram(req: RefineRequest):
         refined_data = agent.refine_diagram(req.prompt, req.current_diagram, custom_icons)
         return refined_data
     except Exception as e:
-        logger.exception("Diagram refinement failed")
-        raise HTTPException(status_code=500, detail=f"Diagram refinement failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/icons")
 def get_custom_icons():

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prompt to Design - Editable Diagrams</title>
+    <title>Architecture Renderer V2 - Enterprise Diagrams</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -49,7 +49,7 @@
             </div>
             <div>
                 <h1 class="text-lg font-bold tracking-tight text-white">Prompt to Design</h1>
-                <p class="text-xs text-slate-400">Agentic Editable Diagram Generator</p>
+                <p class="text-xs text-slate-400">Enterprise Architecture Diagram Generator</p>
             </div>
         </div>
         
@@ -128,7 +128,7 @@
                                 </span>
                                 <span class="font-semibold text-white">Gemini Architect</span>
                             </div>
-                            <p class="leading-relaxed text-xs">Describe the diagram or architecture flow you need, and I'll generate it for you. You can refine it later via conversational feedback!</p>
+                            <p class="leading-relaxed text-xs">Describe any architecture. Gemini extracts the semantic graph; Architecture Renderer V2 composes deterministic zones, layers, arrows and peer groups.</p>
                         </div>
                     </div>
                     
@@ -340,7 +340,7 @@
             <i data-lucide="sparkles" class="w-6 h-6 text-brand-500 absolute animate-pulse"></i>
         </div>
         <p class="text-sm font-semibold mt-4 text-white">Gemini Architecting Diagram...</p>
-        <p class="text-xs text-slate-400 mt-1">Analyzing boundaries and rendering topology</p>
+        <p class="text-xs text-slate-400 mt-1">Building semantic architecture and composing SVG diagram</p>
     </div>
 
     <!-- Modals -->
@@ -361,10 +361,7 @@
         </div>
     </div>
 
-    <!-- Cytoscape layout and dependency files -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+    <!-- Architecture Renderer V2 uses native SVG; no graph-layout dependency is required. -->
     <!-- Custom Application JS -->
     <script src="/static/app.js"></script>
 </body>

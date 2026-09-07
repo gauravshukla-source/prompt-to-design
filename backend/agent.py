@@ -142,7 +142,7 @@ def _generate_with_model_fallback(client: genai.Client, contents: str, config: t
     Vertex AI Gemini models in the region if a 404 NOT_FOUND occurs.
     """
     preferred_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    models_to_try = [preferred_model, "gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro"]
+    models_to_try = [preferred_model, "gemini-2.5-flash", "gemini-2.5-pro"]
     
     # De-duplicate while preserving priority order
     seen = set()

@@ -41,7 +41,7 @@ gcloud run deploy $SERVICE_NAME \
   --region=$REGION \
   --platform=managed \
   --allow-unauthenticated \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCP_LOCATION=${REGION},GEMINI_MODEL=gemini-2.0-flash" \
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCP_LOCATION=${REGION},GEMINI_MODEL=gemini-1.5-flash" \
   --project=$PROJECT_ID
 
 echo ""

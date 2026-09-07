@@ -75,7 +75,7 @@ def check_auth_status() -> dict:
     """
     gcp_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_PROJECT_ID", "architecture-diagram-500204")
     gcp_location = os.environ.get("GCP_LOCATION", "us-central1")
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
 
     try:
         creds, proj = google.auth.default()
@@ -117,9 +117,36 @@ def get_gemini_client() -> genai.Client:
             f"is assigned when running on Cloud Run."
         )
 
+def _generate_with_model_fallback(client: genai.Client, contents: str, config: types.GenerateContentConfig):
+    """
+    Tries the configured model first, and gracefully falls back to other standard
+    Vertex AI Gemini models in the region if a 404 NOT_FOUND occurs.
+    """
+    preferred_model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+    models_to_try = [preferred_model, "gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro"]
+    
+    # De-duplicate while preserving priority order
+    seen = set()
+    candidate_models = [m for m in models_to_try if not (m in seen or seen.add(m))]
+
+    last_error = None
+    for candidate in candidate_models:
+        try:
+            return client.models.generate_content(
+                model=candidate,
+                contents=contents,
+                config=config
+            )
+        except Exception as err:
+            last_error = err
+            err_msg = str(err)
+            if "404" in err_msg or "NOT_FOUND" in err_msg or "not found" in err_msg:
+                continue
+            raise err
+    raise last_error
+
 def generate_diagram(prompt: str, custom_icons: list = None) -> dict:
     client = get_gemini_client()
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
     custom_context_str = ""
     if custom_icons:
@@ -134,8 +161,8 @@ def generate_diagram(prompt: str, custom_icons: list = None) -> dict:
         response_schema=DiagramSchema
     )
 
-    response = client.models.generate_content(
-        model=model,
+    response = _generate_with_model_fallback(
+        client=client,
         contents=f"Generate a diagram for the following prompt:\n{prompt}",
         config=config
     )
@@ -144,7 +171,6 @@ def generate_diagram(prompt: str, custom_icons: list = None) -> dict:
 
 def refine_diagram(prompt: str, current_diagram: dict, custom_icons: list = None) -> dict:
     client = get_gemini_client()
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
     custom_context_str = ""
     if custom_icons:
@@ -167,8 +193,8 @@ Current Diagram State:
         response_schema=DiagramSchema
     )
 
-    response = client.models.generate_content(
-        model=model,
+    response = _generate_with_model_fallback(
+        client=client,
         contents=f"Apply the following modifications: {prompt}",
         config=config
     )

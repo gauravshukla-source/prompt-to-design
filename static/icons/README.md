@@ -1,0 +1,1 @@
+See ../../ICON_LIBRARY_README.md. Place approved SVG assets into provider folders using filenames from icon_registry.json.

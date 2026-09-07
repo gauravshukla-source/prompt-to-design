@@ -11,8 +11,7 @@ __pycache__/
 backend/diagram_generator.db
 
 # User uploaded assets
-static/icons/*
-!static/icons/.gitkeep
+
 
 # Environment variables
 .env

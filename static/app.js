@@ -290,27 +290,18 @@ function initCanvas() {
 function canvasZoomIn() { cy.zoom(cy.zoom() * 1.2); }
 function canvasZoomOut() { cy.zoom(cy.zoom() * 0.8); }
 function canvasFit() { cy.fit(); }
-// Deterministic architecture pattern inference used by Phase 5.1 composition.
+
+// Deterministic architecture layout. Avoids compound-node overlap and makes connectivity readable.
 function inferPatternFromCanvas() {
-    const explicit = cy && cy.data ? cy.data('pattern') : null;
-    if (explicit && explicit !== 'generic') return String(explicit).toLowerCase();
-
-    const labels = cy.nodes()
-        .filter(n => n.data('type') !== 'group')
-        .map(n => `${n.data('label') || ''} ${n.data('icon') || ''} ${n.data('category') || ''} ${n.data('role') || ''}`)
-        .join(' ')
-        .toLowerCase();
-
-    if (/(saviynt|identity governance|\biga\b|\biam\b|scim|okta|entra|active directory|ldap)/.test(labels)) return 'iam';
-    if (/(kafka|rabbitmq|event|queue|topic|pubsub|service bus)/.test(labels)) return 'event_driven';
-    if (/(on-prem|on prem|direct connect|expressroute|\bvpn\b)/.test(labels)) return 'hybrid_cloud';
-    if (/(zero trust|conditional access|\bmfa\b)/.test(labels)) return 'zero_trust';
-    if (/(ingest|etl|pipeline|warehouse|transform|analytics|bigquery|dataflow)/.test(labels)) return 'data_pipeline';
-    if (/(microservice|kubernetes|ecs|api gateway)/.test(labels)) return 'microservices';
-    if (/(database|rds|sql|dynamodb)/.test(labels) && /(web|load balancer|\balb\b|cloudfront)/.test(labels)) return 'three_tier';
+    const explicit = cy.data ? cy.data('pattern') : null;
+    if (explicit) return explicit;
+    const labels = cy.nodes().map(n => `${n.data('label')} ${n.data('icon')}`).join(' ').toLowerCase();
+    if (/saviynt|identity governance|iga|scim/.test(labels)) return 'iam';
+    if (/kafka|rabbitmq|event/.test(labels)) return 'event_driven';
+    if (/microservice|service|kubernetes|ecs/.test(labels)) return 'microservices';
     return 'generic';
-}
 
+}
 
 function roleOrder(pattern) {
     const common = ['external_actor','edge_entry','security_control','identity_provider','traffic_router','primary_component','infrastructure_container','peer_service','integration','event_backbone','transactional_data','data_store','cache','target_application','observability'];
@@ -394,21 +385,52 @@ function canvasAutoLayout() {
         broker.forEach((n,i)=>n.position({x:560,y:centerY+i*100}));
     }
 
-    // Build compound boundaries from inside out. Temporarily detach node parents so bounding boxes use absolute coordinates.
+    // Build compound boundaries from inside out.
+    // IMPORTANT: Cytoscape's move({parent:null}) changes the live parent relationship.
+    // Save BOTH node and group parents before detaching, otherwise boundaries become empty.
     const groups = cy.nodes('[type = "group"]');
     const groupParents = new Map();
-    groups.forEach(g=>groupParents.set(g.id(), g.data('parent') || null));
-    groups.forEach(g=>g.move({parent:null}));
-    nodes.forEach(n=>n.move({parent:null}));
-    const depth = g => { let d=0,p=groupParents.get(g.id()); while(p){d++; p=groupParents.get(p);} return d; };
-    groups.sort((a,b)=>depth(b)-depth(a)).forEach(g=>{
-        const children = nodes.filter(n=>n.data('parent')===g.id()).union(groups.filter(x=>groupParents.get(x.id())===g.id()));
-        if (children.length) {
-            const bb=children.boundingBox({includeLabels:true});
-            g.position({x:bb.x1+bb.w/2,y:bb.y1+bb.h/2});
-            children.forEach(c=>c.move({parent:g.id()}));
+    const nodeParents = new Map();
+
+    groups.forEach(g => groupParents.set(g.id(), g.parent().nonempty() ? g.parent().id() : (g.data('parent') || null)));
+    nodes.forEach(n => nodeParents.set(n.id(), n.parent().nonempty() ? n.parent().id() : (n.data('parent') || null)));
+
+    // Detach everything so application nodes keep absolute positions while boundaries are rebuilt.
+    groups.forEach(g => g.move({parent: null}));
+    nodes.forEach(n => n.move({parent: null}));
+
+    const depth = g => {
+        let d = 0;
+        let parentId = groupParents.get(g.id());
+        while (parentId) {
+            d += 1;
+            parentId = groupParents.get(parentId);
+        }
+        return d;
+    };
+
+    // Restore deepest groups first. Their application children are restored using nodeParents,
+    // then nested groups are restored using groupParents. Compound boundaries auto-size around children.
+    groups.sort((a, b) => depth(b) - depth(a)).forEach(g => {
+        const directNodes = nodes.filter(n => nodeParents.get(n.id()) === g.id());
+        const directGroups = groups.filter(child => groupParents.get(child.id()) === g.id());
+
+        directNodes.forEach(n => n.move({parent: g.id()}));
+        directGroups.forEach(child => child.move({parent: g.id()}));
+
+        const children = directNodes.union(directGroups);
+        if (children.nonempty()) {
+            const bb = children.boundingBox({includeLabels: true});
+            g.position({
+                x: bb.x1 + bb.w / 2,
+                y: bb.y1 + bb.h / 2
+            });
         }
     });
+
+    // Restore top-level groups that have no parent. This is intentionally done after all
+    // child relationships have been rebuilt so AWS Cloud -> VPC -> Subnet containment is preserved.
+    groups.filter(g => !groupParents.get(g.id())).forEach(g => g.move({parent: null}));
     edgeSemanticStyle();
     cy.fit(cy.elements(), 65);
 }

@@ -1,3 +1,4 @@
+// FINAL HOTFIX 2026-09-07: safe zone bounds + icon mapping selectors
 // Full-color, brand-accurate icons matching industry-standard architecture diagrams
 // (AWS Architecture Center / Azure docs / GCP reference arch style)
 const SVG_ICONS = {
@@ -195,16 +196,32 @@ function initCanvas() {
                     'width': '56px',
                     'height': '56px',
                     'shape': 'roundrectangle',
-                    'background-image': 'data(icon_url)',
-                    'background-fit': 'contain',
-                    'background-width': '65%',
-                    'background-height': '65%',
                     'text-wrap': 'wrap',
                     'text-max-width': '110px',
                     'text-outline-width': 2,
                     'text-outline-color': '#0c0c0e',
                     'transition-property': 'background-color, border-color',
                     'transition-duration': '0.2s'
+                }
+            },
+            {
+                // Only nodes that actually have an icon_url use a data mapping.
+                // This prevents Cytoscape warnings for background/layout nodes.
+                selector: 'node[icon_url]',
+                style: {
+                    'background-image': 'data(icon_url)',
+                    'background-fit': 'contain',
+                    'background-width': '65%',
+                    'background-height': '65%'
+                }
+            },
+            {
+                selector: 'node[type = "layout_zone"]',
+                style: {
+                    'background-image': 'none',
+                    'background-fit': 'none',
+                    'events': 'no',
+                    'text-events': 'no'
                 }
             },
             {
@@ -232,7 +249,7 @@ function initCanvas() {
                 }
             },
             {
-                selector: 'node[synthetic = true]',
+                selector: 'node[type = "layout_zone"]',
                 style: {
                     'background-color': 'rgba(91, 140, 255, 0.035)',
                     'border-style': 'solid',
@@ -454,17 +471,79 @@ function zoneForNode(n, pattern) {
 }
 
 function createBackgroundZones(nodes, pattern) {
-    const buckets=new Map();
-    const explicit=cy.data('explicitGroups') || [];
-    explicit.forEach(g=>{
-        const members=nodes.filter(n=>n.data('boundaryParent')===g.id);
-        if(members.length) buckets.set('explicit_'+g.id,{id:'explicit_'+g.id,label:g.label || g.id,nodes:members,explicit:true});
+    // Zones are visual-only nodes. They never become compound parents and never
+    // participate in graph ranking or routing.
+    const buckets = new Map();
+    const explicit = cy.data('explicitGroups') || [];
+
+    explicit.forEach(g => {
+        const members = nodes.filter(n => n.data('boundaryParent') === g.id);
+        if (members.length) {
+            buckets.set('explicit_' + g.id, {
+                id: 'explicit_' + g.id,
+                label: g.label || g.id,
+                nodes: members,
+                explicit: true
+            });
+        }
     });
-    nodes.forEach(n=>{const z=zoneForNode(n,pattern);if(z){if(!buckets.has(z.id))buckets.set(z.id,{...z,nodes:[]});buckets.get(z.id).nodes.push(n);}});
-    buckets.forEach(z=>{
-      const bb=z.nodes.reduce((acc,n)=>acc?acc.union(n.boundingBox()):n.boundingBox(),null); if(!bb)return;
-      const pad=pattern==='iam'?55:42; const zone=cy.add({data:{id:'__'+z.id,label:z.label,type:'layout_zone',synthetic:true},position:{x:bb.x1+bb.w/2,y:bb.y1+bb.h/2}});
-      zone.style({width:Math.max(180,bb.w+pad*2),height:Math.max(125,bb.h+pad*2),'background-color':'#151a24','background-opacity':0.78,'border-color':'#475569','border-width':1.5,'border-style':'dashed','shape':'roundrectangle','label':z.label,'color':'#94a3b8','font-size':11,'font-weight':700,'text-valign':'top','text-margin-y':-10,'background-image':'none','z-index':-10});
+
+    nodes.forEach(n => {
+        const z = zoneForNode(n, pattern);
+        if (!z) return;
+        if (!buckets.has(z.id)) buckets.set(z.id, { ...z, nodes: [] });
+        buckets.get(z.id).nodes.push(n);
+    });
+
+    buckets.forEach(z => {
+        // Do not use BoundingBox.union(): Cytoscape returns a plain bounding-box
+        // object, not a collection. Calculate the union explicitly.
+        let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+        z.nodes.forEach(n => {
+            const bb = n.boundingBox({ includeLabels: true, includeOverlays: false });
+            x1 = Math.min(x1, bb.x1);
+            y1 = Math.min(y1, bb.y1);
+            x2 = Math.max(x2, bb.x2);
+            y2 = Math.max(y2, bb.y2);
+        });
+        if (!Number.isFinite(x1) || !Number.isFinite(y1)) return;
+
+        const pad = pattern === 'iam' ? 55 : 42;
+        const width = Math.max(180, (x2 - x1) + pad * 2);
+        const height = Math.max(125, (y2 - y1) + pad * 2);
+        const zone = cy.add({
+            group: 'nodes',
+            data: {
+                id: '__' + z.id,
+                label: z.label,
+                type: 'layout_zone',
+                synthetic: true,
+                icon_url: null
+            },
+            position: { x: (x1 + x2) / 2, y: (y1 + y2) / 2 }
+        });
+
+        zone.style({
+            width,
+            height,
+            'background-color': '#151a24',
+            'background-opacity': 0.55,
+            'border-color': '#475569',
+            'border-width': 1.5,
+            'border-style': 'dashed',
+            shape: 'roundrectangle',
+            label: z.label,
+            color: '#94a3b8',
+            'font-size': 11,
+            'font-weight': 700,
+            'text-valign': 'top',
+            'text-margin-y': -12,
+            'background-image': 'none',
+            'z-index': -100,
+            events: 'no',
+            'text-events': 'no'
+        });
+        zone.lock();
     });
 }
 
@@ -497,7 +576,8 @@ function canvasAutoLayout(dsl={}) {
     createBackgroundZones(nodes,pattern);
     routeEdges(pattern,orientation);
     cy.nodes('[type="layout_zone"]').lock();
-    cy.fit(cy.elements(),70);
+    cy.fit(cy.elements(), 70);
+    cy.nodes('[type="layout_zone"]').style('z-index', -100);
 }
 
 // Project Logic

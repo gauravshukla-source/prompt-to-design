@@ -404,12 +404,17 @@ function canvasAutoLayout(dsl = {}) {
         else if (/(metric|log|trace|monitor)/.test(raw)) e.addClass('edge-monitor');
     });
 
-    cy.edges().style({
+// Apply connector routing after all node positions are finalized
+const edges = cy.edges();
+
+edges.forEach(edge => {
+    edge.style({
         'curve-style': 'taxi',
         'taxi-direction': 'rightward',
         'taxi-turn': '50%',
         'taxi-turn-min-distance': 25
-    }).update();
+    });
+});
 
     cy.fit(cy.elements(), 80);
 }

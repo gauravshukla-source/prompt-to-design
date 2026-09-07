@@ -1,6 +1,7 @@
 import os
 import uuid
 import shutil
+import logging
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +24,10 @@ if os.path.exists(env_path):
 import database
 import agent
 
-app = FastAPI(title="Enterprise Architecture Studio API", version="4.1.0")
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+logger = logging.getLogger("architecture-generator")
+
+app = FastAPI(title="Prompt to Design Diagram Generator API")
 
 # Setup CORS
 app.add_middleware(
@@ -59,11 +63,6 @@ class DiagramSaveRequest(BaseModel):
     version: int
 
 # API Endpoints
-
-@app.get("/api/health")
-def health():
-    return {"status": "ok", "phase": "4.1", "engine": "Smart Graph Layout & Connector Intelligence"}
-
 
 @app.get("/api/projects")
 def get_projects():
@@ -109,7 +108,8 @@ def generate_diagram(req: GenerateRequest):
         diagram_data = agent.generate_diagram(req.prompt, custom_icons)
         return diagram_data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Diagram generation failed")
+        raise HTTPException(status_code=500, detail=f"Diagram generation failed: {str(e)}")
 
 @app.post("/api/refine")
 def refine_diagram(req: RefineRequest):
@@ -118,7 +118,8 @@ def refine_diagram(req: RefineRequest):
         refined_data = agent.refine_diagram(req.prompt, req.current_diagram, custom_icons)
         return refined_data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Diagram refinement failed")
+        raise HTTPException(status_code=500, detail=f"Diagram refinement failed: {str(e)}")
 
 @app.get("/api/icons")
 def get_custom_icons():

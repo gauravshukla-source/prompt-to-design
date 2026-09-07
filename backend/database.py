@@ -45,6 +45,33 @@ def init_db():
         )
     """)
     
+    # Phase 3 frontend/architecture metadata migrations for existing databases
+    def ensure_column(table, column, definition):
+        cursor.execute(f"PRAGMA table_info({table})")
+        existing = {row[1] for row in cursor.fetchall()}
+        if column not in existing:
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+    ensure_column("diagrams", "title", "TEXT")
+    ensure_column("diagrams", "architecture_view", "TEXT DEFAULT 'logical'")
+    ensure_column("diagrams", "lint_score", "INTEGER")
+    ensure_column("diagrams", "lint_grade", "TEXT")
+    ensure_column("diagrams", "metadata_json", "TEXT")
+    ensure_column("custom_icons", "provider", "TEXT DEFAULT 'organization'")
+    ensure_column("custom_icons", "category", "TEXT DEFAULT 'application'")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS diagram_quality (
+            id TEXT PRIMARY KEY,
+            diagram_id TEXT NOT NULL,
+            score INTEGER,
+            grade TEXT,
+            findings_json TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (diagram_id) REFERENCES diagrams (id)
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_diagrams_project_updated ON diagrams(project_id, updated_at DESC)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_quality_diagram ON diagram_quality(diagram_id, created_at DESC)")
     conn.commit()
     conn.close()
 
@@ -104,12 +131,12 @@ def get_project_diagrams(project_id: str):
     return [dict(row) for row in rows]
 
 # Custom Icon Helpers
-def save_custom_icon(icon_id: str, tag: str, description: str, filename: str):
+def save_custom_icon(icon_id: str, tag: str, description: str, filename: str, provider: str = "organization", category: str = "application"):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO custom_icons (id, tag, description, filename) VALUES (?, ?, ?, ?)",
-        (icon_id, tag, description, filename)
+        "INSERT OR REPLACE INTO custom_icons (id, tag, description, filename, provider, category) VALUES (?, ?, ?, ?, ?, ?)",
+        (icon_id, tag, description, filename, provider, category)
     )
     conn.commit()
     conn.close()

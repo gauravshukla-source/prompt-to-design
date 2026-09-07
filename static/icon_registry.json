@@ -1,0 +1,3376 @@
+{
+  "version": "1.0.0",
+  "icons": [
+    {
+      "id": "aws-api-gateway",
+      "name": "Api Gateway",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/api-gateway.svg",
+      "file": "aws/api-gateway.svg",
+      "aliases": [
+        "api gateway",
+        "apigateway",
+        "rest api gateway"
+      ],
+      "tags": [
+        "api",
+        "aws",
+        "gateway"
+      ]
+    },
+    {
+      "id": "aws-cloudfront",
+      "name": "Cloudfront",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/cloudfront.svg",
+      "file": "aws/cloudfront.svg",
+      "aliases": [
+        "cloudfront"
+      ],
+      "tags": [
+        "aws",
+        "cloudfront"
+      ]
+    },
+    {
+      "id": "aws-application-load-balancer",
+      "name": "Application Load Balancer",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/application-load-balancer.svg",
+      "file": "aws/application-load-balancer.svg",
+      "aliases": [
+        "application load balancer",
+        "applicationloadbalancer"
+      ],
+      "tags": [
+        "application",
+        "aws",
+        "balancer",
+        "load"
+      ]
+    },
+    {
+      "id": "aws-network-load-balancer",
+      "name": "Network Load Balancer",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/network-load-balancer.svg",
+      "file": "aws/network-load-balancer.svg",
+      "aliases": [
+        "network load balancer",
+        "networkloadbalancer"
+      ],
+      "tags": [
+        "aws",
+        "balancer",
+        "load",
+        "network"
+      ]
+    },
+    {
+      "id": "aws-route-53",
+      "name": "Route 53",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/route-53.svg",
+      "file": "aws/route-53.svg",
+      "aliases": [
+        "route 53",
+        "route53"
+      ],
+      "tags": [
+        "53",
+        "aws",
+        "route"
+      ]
+    },
+    {
+      "id": "aws-vpc",
+      "name": "Vpc",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/vpc.svg",
+      "file": "aws/vpc.svg",
+      "aliases": [
+        "vpc"
+      ],
+      "tags": [
+        "aws",
+        "vpc"
+      ]
+    },
+    {
+      "id": "aws-transit-gateway",
+      "name": "Transit Gateway",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/transit-gateway.svg",
+      "file": "aws/transit-gateway.svg",
+      "aliases": [
+        "transit gateway",
+        "transitgateway"
+      ],
+      "tags": [
+        "aws",
+        "gateway",
+        "transit"
+      ]
+    },
+    {
+      "id": "aws-direct-connect",
+      "name": "Direct Connect",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/direct-connect.svg",
+      "file": "aws/direct-connect.svg",
+      "aliases": [
+        "direct connect",
+        "directconnect"
+      ],
+      "tags": [
+        "aws",
+        "connect",
+        "direct"
+      ]
+    },
+    {
+      "id": "aws-ec2",
+      "name": "Ec2",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/ec2.svg",
+      "file": "aws/ec2.svg",
+      "aliases": [
+        "ec2"
+      ],
+      "tags": [
+        "aws",
+        "ec2"
+      ]
+    },
+    {
+      "id": "aws-lambda",
+      "name": "Lambda",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/lambda.svg",
+      "file": "aws/lambda.svg",
+      "aliases": [
+        "lambda"
+      ],
+      "tags": [
+        "aws",
+        "lambda"
+      ]
+    },
+    {
+      "id": "aws-ecs",
+      "name": "Ecs",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/ecs.svg",
+      "file": "aws/ecs.svg",
+      "aliases": [
+        "ecs"
+      ],
+      "tags": [
+        "aws",
+        "ecs"
+      ]
+    },
+    {
+      "id": "aws-eks",
+      "name": "Eks",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/eks.svg",
+      "file": "aws/eks.svg",
+      "aliases": [
+        "eks"
+      ],
+      "tags": [
+        "aws",
+        "eks"
+      ]
+    },
+    {
+      "id": "aws-fargate",
+      "name": "Fargate",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/fargate.svg",
+      "file": "aws/fargate.svg",
+      "aliases": [
+        "fargate"
+      ],
+      "tags": [
+        "aws",
+        "fargate"
+      ]
+    },
+    {
+      "id": "aws-rds",
+      "name": "Rds",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/rds.svg",
+      "file": "aws/rds.svg",
+      "aliases": [
+        "rds"
+      ],
+      "tags": [
+        "aws",
+        "rds"
+      ]
+    },
+    {
+      "id": "aws-aurora",
+      "name": "Aurora",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/aurora.svg",
+      "file": "aws/aurora.svg",
+      "aliases": [
+        "aurora"
+      ],
+      "tags": [
+        "aurora",
+        "aws"
+      ]
+    },
+    {
+      "id": "aws-dynamodb",
+      "name": "Dynamodb",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/dynamodb.svg",
+      "file": "aws/dynamodb.svg",
+      "aliases": [
+        "dynamodb"
+      ],
+      "tags": [
+        "aws",
+        "dynamodb"
+      ]
+    },
+    {
+      "id": "aws-elasticache",
+      "name": "Elasticache",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/elasticache.svg",
+      "file": "aws/elasticache.svg",
+      "aliases": [
+        "elasticache"
+      ],
+      "tags": [
+        "aws",
+        "elasticache"
+      ]
+    },
+    {
+      "id": "aws-redshift",
+      "name": "Redshift",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/redshift.svg",
+      "file": "aws/redshift.svg",
+      "aliases": [
+        "redshift"
+      ],
+      "tags": [
+        "aws",
+        "redshift"
+      ]
+    },
+    {
+      "id": "aws-opensearch",
+      "name": "Opensearch",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/opensearch.svg",
+      "file": "aws/opensearch.svg",
+      "aliases": [
+        "opensearch"
+      ],
+      "tags": [
+        "aws",
+        "opensearch"
+      ]
+    },
+    {
+      "id": "aws-s3",
+      "name": "S3",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/s3.svg",
+      "file": "aws/s3.svg",
+      "aliases": [
+        "s3"
+      ],
+      "tags": [
+        "aws",
+        "s3"
+      ]
+    },
+    {
+      "id": "aws-efs",
+      "name": "Efs",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/efs.svg",
+      "file": "aws/efs.svg",
+      "aliases": [
+        "efs"
+      ],
+      "tags": [
+        "aws",
+        "efs"
+      ]
+    },
+    {
+      "id": "aws-sqs",
+      "name": "Sqs",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/sqs.svg",
+      "file": "aws/sqs.svg",
+      "aliases": [
+        "sqs"
+      ],
+      "tags": [
+        "aws",
+        "sqs"
+      ]
+    },
+    {
+      "id": "aws-sns",
+      "name": "Sns",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/sns.svg",
+      "file": "aws/sns.svg",
+      "aliases": [
+        "sns"
+      ],
+      "tags": [
+        "aws",
+        "sns"
+      ]
+    },
+    {
+      "id": "aws-eventbridge",
+      "name": "Eventbridge",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/eventbridge.svg",
+      "file": "aws/eventbridge.svg",
+      "aliases": [
+        "eventbridge"
+      ],
+      "tags": [
+        "aws",
+        "eventbridge"
+      ]
+    },
+    {
+      "id": "aws-step-functions",
+      "name": "Step Functions",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/step-functions.svg",
+      "file": "aws/step-functions.svg",
+      "aliases": [
+        "step functions",
+        "stepfunctions"
+      ],
+      "tags": [
+        "aws",
+        "functions",
+        "step"
+      ]
+    },
+    {
+      "id": "aws-iam",
+      "name": "Iam",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/iam.svg",
+      "file": "aws/iam.svg",
+      "aliases": [
+        "iam"
+      ],
+      "tags": [
+        "aws",
+        "iam"
+      ]
+    },
+    {
+      "id": "aws-cognito",
+      "name": "Cognito",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/cognito.svg",
+      "file": "aws/cognito.svg",
+      "aliases": [
+        "cognito"
+      ],
+      "tags": [
+        "aws",
+        "cognito"
+      ]
+    },
+    {
+      "id": "aws-secrets-manager",
+      "name": "Secrets Manager",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/secrets-manager.svg",
+      "file": "aws/secrets-manager.svg",
+      "aliases": [
+        "secrets manager",
+        "secretsmanager"
+      ],
+      "tags": [
+        "aws",
+        "manager",
+        "secrets"
+      ]
+    },
+    {
+      "id": "aws-kms",
+      "name": "Kms",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/kms.svg",
+      "file": "aws/kms.svg",
+      "aliases": [
+        "kms"
+      ],
+      "tags": [
+        "aws",
+        "kms"
+      ]
+    },
+    {
+      "id": "aws-waf",
+      "name": "Waf",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/waf.svg",
+      "file": "aws/waf.svg",
+      "aliases": [
+        "waf"
+      ],
+      "tags": [
+        "aws",
+        "waf"
+      ]
+    },
+    {
+      "id": "aws-cloudwatch",
+      "name": "Cloudwatch",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/cloudwatch.svg",
+      "file": "aws/cloudwatch.svg",
+      "aliases": [
+        "cloudwatch"
+      ],
+      "tags": [
+        "aws",
+        "cloudwatch"
+      ]
+    },
+    {
+      "id": "aws-cloudtrail",
+      "name": "Cloudtrail",
+      "provider": "aws",
+      "category": "aws",
+      "path": "/static/icons/aws/cloudtrail.svg",
+      "file": "aws/cloudtrail.svg",
+      "aliases": [
+        "cloudtrail"
+      ],
+      "tags": [
+        "aws",
+        "cloudtrail"
+      ]
+    },
+    {
+      "id": "azure-api-management",
+      "name": "Api Management",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/api-management.svg",
+      "file": "azure/api-management.svg",
+      "aliases": [
+        "api management",
+        "apimanagement"
+      ],
+      "tags": [
+        "api",
+        "azure",
+        "management"
+      ]
+    },
+    {
+      "id": "azure-application-gateway",
+      "name": "Application Gateway",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/application-gateway.svg",
+      "file": "azure/application-gateway.svg",
+      "aliases": [
+        "application gateway",
+        "applicationgateway"
+      ],
+      "tags": [
+        "application",
+        "azure",
+        "gateway"
+      ]
+    },
+    {
+      "id": "azure-load-balancer",
+      "name": "Load Balancer",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/load-balancer.svg",
+      "file": "azure/load-balancer.svg",
+      "aliases": [
+        "load balancer",
+        "loadbalancer"
+      ],
+      "tags": [
+        "azure",
+        "balancer",
+        "load"
+      ]
+    },
+    {
+      "id": "azure-front-door",
+      "name": "Front Door",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/front-door.svg",
+      "file": "azure/front-door.svg",
+      "aliases": [
+        "front door",
+        "frontdoor"
+      ],
+      "tags": [
+        "azure",
+        "door",
+        "front"
+      ]
+    },
+    {
+      "id": "azure-virtual-network",
+      "name": "Virtual Network",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/virtual-network.svg",
+      "file": "azure/virtual-network.svg",
+      "aliases": [
+        "virtual network",
+        "virtualnetwork"
+      ],
+      "tags": [
+        "azure",
+        "network",
+        "virtual"
+      ]
+    },
+    {
+      "id": "azure-vpn-gateway",
+      "name": "Vpn Gateway",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/vpn-gateway.svg",
+      "file": "azure/vpn-gateway.svg",
+      "aliases": [
+        "vpn gateway",
+        "vpngateway"
+      ],
+      "tags": [
+        "azure",
+        "gateway",
+        "vpn"
+      ]
+    },
+    {
+      "id": "azure-expressroute",
+      "name": "Expressroute",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/expressroute.svg",
+      "file": "azure/expressroute.svg",
+      "aliases": [
+        "expressroute"
+      ],
+      "tags": [
+        "azure",
+        "expressroute"
+      ]
+    },
+    {
+      "id": "azure-app-service",
+      "name": "App Service",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/app-service.svg",
+      "file": "azure/app-service.svg",
+      "aliases": [
+        "app service",
+        "appservice"
+      ],
+      "tags": [
+        "app",
+        "azure",
+        "service"
+      ]
+    },
+    {
+      "id": "azure-functions",
+      "name": "Functions",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/functions.svg",
+      "file": "azure/functions.svg",
+      "aliases": [
+        "functions"
+      ],
+      "tags": [
+        "azure",
+        "functions"
+      ]
+    },
+    {
+      "id": "azure-virtual-machine",
+      "name": "Virtual Machine",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/virtual-machine.svg",
+      "file": "azure/virtual-machine.svg",
+      "aliases": [
+        "virtual machine",
+        "virtualmachine"
+      ],
+      "tags": [
+        "azure",
+        "machine",
+        "virtual"
+      ]
+    },
+    {
+      "id": "azure-aks",
+      "name": "Aks",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/aks.svg",
+      "file": "azure/aks.svg",
+      "aliases": [
+        "aks"
+      ],
+      "tags": [
+        "aks",
+        "azure"
+      ]
+    },
+    {
+      "id": "azure-container-apps",
+      "name": "Container Apps",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/container-apps.svg",
+      "file": "azure/container-apps.svg",
+      "aliases": [
+        "container apps",
+        "containerapps"
+      ],
+      "tags": [
+        "apps",
+        "azure",
+        "container"
+      ]
+    },
+    {
+      "id": "azure-sql-database",
+      "name": "Sql Database",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/sql-database.svg",
+      "file": "azure/sql-database.svg",
+      "aliases": [
+        "sql database",
+        "sqldatabase"
+      ],
+      "tags": [
+        "azure",
+        "database",
+        "sql"
+      ]
+    },
+    {
+      "id": "azure-cosmos-db",
+      "name": "Cosmos Db",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/cosmos-db.svg",
+      "file": "azure/cosmos-db.svg",
+      "aliases": [
+        "cosmos db",
+        "cosmosdb"
+      ],
+      "tags": [
+        "azure",
+        "cosmos",
+        "db"
+      ]
+    },
+    {
+      "id": "azure-postgresql",
+      "name": "Postgresql",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/postgresql.svg",
+      "file": "azure/postgresql.svg",
+      "aliases": [
+        "postgresql"
+      ],
+      "tags": [
+        "azure",
+        "postgresql"
+      ]
+    },
+    {
+      "id": "azure-redis-cache",
+      "name": "Redis Cache",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/redis-cache.svg",
+      "file": "azure/redis-cache.svg",
+      "aliases": [
+        "redis cache",
+        "rediscache"
+      ],
+      "tags": [
+        "azure",
+        "cache",
+        "redis"
+      ]
+    },
+    {
+      "id": "azure-storage-account",
+      "name": "Storage Account",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/storage-account.svg",
+      "file": "azure/storage-account.svg",
+      "aliases": [
+        "storage account",
+        "storageaccount"
+      ],
+      "tags": [
+        "account",
+        "azure",
+        "storage"
+      ]
+    },
+    {
+      "id": "azure-blob-storage",
+      "name": "Blob Storage",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/blob-storage.svg",
+      "file": "azure/blob-storage.svg",
+      "aliases": [
+        "blob storage",
+        "blobstorage"
+      ],
+      "tags": [
+        "azure",
+        "blob",
+        "storage"
+      ]
+    },
+    {
+      "id": "azure-service-bus",
+      "name": "Service Bus",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/service-bus.svg",
+      "file": "azure/service-bus.svg",
+      "aliases": [
+        "service bus",
+        "servicebus"
+      ],
+      "tags": [
+        "azure",
+        "bus",
+        "service"
+      ]
+    },
+    {
+      "id": "azure-event-grid",
+      "name": "Event Grid",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/event-grid.svg",
+      "file": "azure/event-grid.svg",
+      "aliases": [
+        "event grid",
+        "eventgrid"
+      ],
+      "tags": [
+        "azure",
+        "event",
+        "grid"
+      ]
+    },
+    {
+      "id": "azure-event-hubs",
+      "name": "Event Hubs",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/event-hubs.svg",
+      "file": "azure/event-hubs.svg",
+      "aliases": [
+        "event hubs",
+        "eventhubs"
+      ],
+      "tags": [
+        "azure",
+        "event",
+        "hubs"
+      ]
+    },
+    {
+      "id": "azure-logic-apps",
+      "name": "Logic Apps",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/logic-apps.svg",
+      "file": "azure/logic-apps.svg",
+      "aliases": [
+        "logic apps",
+        "logicapps"
+      ],
+      "tags": [
+        "apps",
+        "azure",
+        "logic"
+      ]
+    },
+    {
+      "id": "azure-entra-id",
+      "name": "Entra Id",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/entra-id.svg",
+      "file": "azure/entra-id.svg",
+      "aliases": [
+        "azure active directory",
+        "azure ad",
+        "entra id",
+        "entraid",
+        "microsoft entra",
+        "microsoft entra id"
+      ],
+      "tags": [
+        "azure",
+        "entra",
+        "id"
+      ]
+    },
+    {
+      "id": "azure-managed-identity",
+      "name": "Managed Identity",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/managed-identity.svg",
+      "file": "azure/managed-identity.svg",
+      "aliases": [
+        "managed identity",
+        "managedidentity"
+      ],
+      "tags": [
+        "azure",
+        "identity",
+        "managed"
+      ]
+    },
+    {
+      "id": "azure-key-vault",
+      "name": "Key Vault",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/key-vault.svg",
+      "file": "azure/key-vault.svg",
+      "aliases": [
+        "key vault",
+        "keyvault"
+      ],
+      "tags": [
+        "azure",
+        "key",
+        "vault"
+      ]
+    },
+    {
+      "id": "azure-defender-for-cloud",
+      "name": "Defender For Cloud",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/defender-for-cloud.svg",
+      "file": "azure/defender-for-cloud.svg",
+      "aliases": [
+        "defender for cloud",
+        "defenderforcloud"
+      ],
+      "tags": [
+        "azure",
+        "cloud",
+        "defender",
+        "for"
+      ]
+    },
+    {
+      "id": "azure-monitor",
+      "name": "Monitor",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/monitor.svg",
+      "file": "azure/monitor.svg",
+      "aliases": [
+        "monitor"
+      ],
+      "tags": [
+        "azure",
+        "monitor"
+      ]
+    },
+    {
+      "id": "azure-application-insights",
+      "name": "Application Insights",
+      "provider": "azure",
+      "category": "azure",
+      "path": "/static/icons/azure/application-insights.svg",
+      "file": "azure/application-insights.svg",
+      "aliases": [
+        "application insights",
+        "applicationinsights"
+      ],
+      "tags": [
+        "application",
+        "azure",
+        "insights"
+      ]
+    },
+    {
+      "id": "gcp-cloud-run",
+      "name": "Cloud Run",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-run.svg",
+      "file": "gcp/cloud-run.svg",
+      "aliases": [
+        "cloud run",
+        "cloudrun"
+      ],
+      "tags": [
+        "cloud",
+        "gcp",
+        "run"
+      ]
+    },
+    {
+      "id": "gcp-compute-engine",
+      "name": "Compute Engine",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/compute-engine.svg",
+      "file": "gcp/compute-engine.svg",
+      "aliases": [
+        "compute engine",
+        "computeengine"
+      ],
+      "tags": [
+        "compute",
+        "engine",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-app-engine",
+      "name": "App Engine",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/app-engine.svg",
+      "file": "gcp/app-engine.svg",
+      "aliases": [
+        "app engine",
+        "appengine"
+      ],
+      "tags": [
+        "app",
+        "engine",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-cloud-functions",
+      "name": "Cloud Functions",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-functions.svg",
+      "file": "gcp/cloud-functions.svg",
+      "aliases": [
+        "cloud function",
+        "cloud functions",
+        "cloudfunctions",
+        "google cloud functions"
+      ],
+      "tags": [
+        "cloud",
+        "functions",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-gke",
+      "name": "Gke",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/gke.svg",
+      "file": "gcp/gke.svg",
+      "aliases": [
+        "gke"
+      ],
+      "tags": [
+        "gcp",
+        "gke"
+      ]
+    },
+    {
+      "id": "gcp-api-gateway",
+      "name": "Api Gateway",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/api-gateway.svg",
+      "file": "gcp/api-gateway.svg",
+      "aliases": [
+        "api gateway",
+        "apigateway",
+        "rest api gateway"
+      ],
+      "tags": [
+        "api",
+        "gateway",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-load-balancing",
+      "name": "Load Balancing",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/load-balancing.svg",
+      "file": "gcp/load-balancing.svg",
+      "aliases": [
+        "load balancing",
+        "loadbalancing"
+      ],
+      "tags": [
+        "balancing",
+        "gcp",
+        "load"
+      ]
+    },
+    {
+      "id": "gcp-cloud-cdn",
+      "name": "Cloud Cdn",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-cdn.svg",
+      "file": "gcp/cloud-cdn.svg",
+      "aliases": [
+        "cloud cdn",
+        "cloudcdn"
+      ],
+      "tags": [
+        "cdn",
+        "cloud",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-cloud-armor",
+      "name": "Cloud Armor",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-armor.svg",
+      "file": "gcp/cloud-armor.svg",
+      "aliases": [
+        "cloud armor",
+        "cloudarmor"
+      ],
+      "tags": [
+        "armor",
+        "cloud",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-cloud-vpn",
+      "name": "Cloud Vpn",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-vpn.svg",
+      "file": "gcp/cloud-vpn.svg",
+      "aliases": [
+        "cloud vpn",
+        "cloudvpn"
+      ],
+      "tags": [
+        "cloud",
+        "gcp",
+        "vpn"
+      ]
+    },
+    {
+      "id": "gcp-cloud-sql",
+      "name": "Cloud Sql",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-sql.svg",
+      "file": "gcp/cloud-sql.svg",
+      "aliases": [
+        "cloud sql",
+        "cloudsql"
+      ],
+      "tags": [
+        "cloud",
+        "gcp",
+        "sql"
+      ]
+    },
+    {
+      "id": "gcp-firestore",
+      "name": "Firestore",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/firestore.svg",
+      "file": "gcp/firestore.svg",
+      "aliases": [
+        "firestore"
+      ],
+      "tags": [
+        "firestore",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-bigtable",
+      "name": "Bigtable",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/bigtable.svg",
+      "file": "gcp/bigtable.svg",
+      "aliases": [
+        "bigtable"
+      ],
+      "tags": [
+        "bigtable",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-spanner",
+      "name": "Spanner",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/spanner.svg",
+      "file": "gcp/spanner.svg",
+      "aliases": [
+        "spanner"
+      ],
+      "tags": [
+        "gcp",
+        "spanner"
+      ]
+    },
+    {
+      "id": "gcp-memorystore",
+      "name": "Memorystore",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/memorystore.svg",
+      "file": "gcp/memorystore.svg",
+      "aliases": [
+        "memorystore"
+      ],
+      "tags": [
+        "gcp",
+        "memorystore"
+      ]
+    },
+    {
+      "id": "gcp-cloud-storage",
+      "name": "Cloud Storage",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-storage.svg",
+      "file": "gcp/cloud-storage.svg",
+      "aliases": [
+        "cloud storage",
+        "cloudstorage"
+      ],
+      "tags": [
+        "cloud",
+        "gcp",
+        "storage"
+      ]
+    },
+    {
+      "id": "gcp-pubsub",
+      "name": "Pubsub",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/pubsub.svg",
+      "file": "gcp/pubsub.svg",
+      "aliases": [
+        "pubsub"
+      ],
+      "tags": [
+        "gcp",
+        "pubsub"
+      ]
+    },
+    {
+      "id": "gcp-eventarc",
+      "name": "Eventarc",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/eventarc.svg",
+      "file": "gcp/eventarc.svg",
+      "aliases": [
+        "eventarc"
+      ],
+      "tags": [
+        "eventarc",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-cloud-tasks",
+      "name": "Cloud Tasks",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-tasks.svg",
+      "file": "gcp/cloud-tasks.svg",
+      "aliases": [
+        "cloud tasks",
+        "cloudtasks"
+      ],
+      "tags": [
+        "cloud",
+        "gcp",
+        "tasks"
+      ]
+    },
+    {
+      "id": "gcp-workflows",
+      "name": "Workflows",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/workflows.svg",
+      "file": "gcp/workflows.svg",
+      "aliases": [
+        "workflows"
+      ],
+      "tags": [
+        "gcp",
+        "workflows"
+      ]
+    },
+    {
+      "id": "gcp-apigee",
+      "name": "Apigee",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/apigee.svg",
+      "file": "gcp/apigee.svg",
+      "aliases": [
+        "apigee"
+      ],
+      "tags": [
+        "apigee",
+        "gcp"
+      ]
+    },
+    {
+      "id": "gcp-iam",
+      "name": "Iam",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/iam.svg",
+      "file": "gcp/iam.svg",
+      "aliases": [
+        "iam"
+      ],
+      "tags": [
+        "gcp",
+        "iam"
+      ]
+    },
+    {
+      "id": "gcp-secret-manager",
+      "name": "Secret Manager",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/secret-manager.svg",
+      "file": "gcp/secret-manager.svg",
+      "aliases": [
+        "secret manager",
+        "secretmanager"
+      ],
+      "tags": [
+        "gcp",
+        "manager",
+        "secret"
+      ]
+    },
+    {
+      "id": "gcp-cloud-kms",
+      "name": "Cloud Kms",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-kms.svg",
+      "file": "gcp/cloud-kms.svg",
+      "aliases": [
+        "cloud kms",
+        "cloudkms"
+      ],
+      "tags": [
+        "cloud",
+        "gcp",
+        "kms"
+      ]
+    },
+    {
+      "id": "gcp-identity-platform",
+      "name": "Identity Platform",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/identity-platform.svg",
+      "file": "gcp/identity-platform.svg",
+      "aliases": [
+        "identity platform",
+        "identityplatform"
+      ],
+      "tags": [
+        "gcp",
+        "identity",
+        "platform"
+      ]
+    },
+    {
+      "id": "gcp-cloud-logging",
+      "name": "Cloud Logging",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-logging.svg",
+      "file": "gcp/cloud-logging.svg",
+      "aliases": [
+        "cloud logging",
+        "cloudlogging"
+      ],
+      "tags": [
+        "cloud",
+        "gcp",
+        "logging"
+      ]
+    },
+    {
+      "id": "gcp-cloud-monitoring",
+      "name": "Cloud Monitoring",
+      "provider": "gcp",
+      "category": "gcp",
+      "path": "/static/icons/gcp/cloud-monitoring.svg",
+      "file": "gcp/cloud-monitoring.svg",
+      "aliases": [
+        "cloud monitoring",
+        "cloudmonitoring"
+      ],
+      "tags": [
+        "cloud",
+        "gcp",
+        "monitoring"
+      ]
+    },
+    {
+      "id": "kubernetes-kubernetes",
+      "name": "Kubernetes",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/kubernetes.svg",
+      "file": "kubernetes/kubernetes.svg",
+      "aliases": [
+        "kubernetes"
+      ],
+      "tags": [
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "kubernetes-cluster",
+      "name": "Cluster",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/cluster.svg",
+      "file": "kubernetes/cluster.svg",
+      "aliases": [
+        "cluster"
+      ],
+      "tags": [
+        "cluster",
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "kubernetes-namespace",
+      "name": "Namespace",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/namespace.svg",
+      "file": "kubernetes/namespace.svg",
+      "aliases": [
+        "namespace"
+      ],
+      "tags": [
+        "kubernetes",
+        "namespace"
+      ]
+    },
+    {
+      "id": "kubernetes-node",
+      "name": "Node",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/node.svg",
+      "file": "kubernetes/node.svg",
+      "aliases": [
+        "node"
+      ],
+      "tags": [
+        "kubernetes",
+        "node"
+      ]
+    },
+    {
+      "id": "kubernetes-pod",
+      "name": "Pod",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/pod.svg",
+      "file": "kubernetes/pod.svg",
+      "aliases": [
+        "pod"
+      ],
+      "tags": [
+        "kubernetes",
+        "pod"
+      ]
+    },
+    {
+      "id": "kubernetes-deployment",
+      "name": "Deployment",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/deployment.svg",
+      "file": "kubernetes/deployment.svg",
+      "aliases": [
+        "deployment"
+      ],
+      "tags": [
+        "deployment",
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "kubernetes-service",
+      "name": "Service",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/service.svg",
+      "file": "kubernetes/service.svg",
+      "aliases": [
+        "service"
+      ],
+      "tags": [
+        "kubernetes",
+        "service"
+      ]
+    },
+    {
+      "id": "kubernetes-ingress",
+      "name": "Ingress",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/ingress.svg",
+      "file": "kubernetes/ingress.svg",
+      "aliases": [
+        "ingress"
+      ],
+      "tags": [
+        "ingress",
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "kubernetes-container",
+      "name": "Container",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/container.svg",
+      "file": "kubernetes/container.svg",
+      "aliases": [
+        "container"
+      ],
+      "tags": [
+        "container",
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "kubernetes-docker",
+      "name": "Docker",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/docker.svg",
+      "file": "kubernetes/docker.svg",
+      "aliases": [
+        "docker"
+      ],
+      "tags": [
+        "docker",
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "kubernetes-helm",
+      "name": "Helm",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/helm.svg",
+      "file": "kubernetes/helm.svg",
+      "aliases": [
+        "helm"
+      ],
+      "tags": [
+        "helm",
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "kubernetes-istio",
+      "name": "Istio",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/istio.svg",
+      "file": "kubernetes/istio.svg",
+      "aliases": [
+        "istio"
+      ],
+      "tags": [
+        "istio",
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "kubernetes-service-mesh",
+      "name": "Service Mesh",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/service-mesh.svg",
+      "file": "kubernetes/service-mesh.svg",
+      "aliases": [
+        "service mesh",
+        "servicemesh"
+      ],
+      "tags": [
+        "kubernetes",
+        "mesh",
+        "service"
+      ]
+    },
+    {
+      "id": "kubernetes-container-registry",
+      "name": "Container Registry",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/container-registry.svg",
+      "file": "kubernetes/container-registry.svg",
+      "aliases": [
+        "container registry",
+        "containerregistry"
+      ],
+      "tags": [
+        "container",
+        "kubernetes",
+        "registry"
+      ]
+    },
+    {
+      "id": "kubernetes-openshift",
+      "name": "Openshift",
+      "provider": "kubernetes",
+      "category": "kubernetes",
+      "path": "/static/icons/kubernetes/openshift.svg",
+      "file": "kubernetes/openshift.svg",
+      "aliases": [
+        "openshift"
+      ],
+      "tags": [
+        "kubernetes",
+        "openshift"
+      ]
+    },
+    {
+      "id": "identity-active-directory",
+      "name": "Active Directory",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/active-directory.svg",
+      "file": "identity/active-directory.svg",
+      "aliases": [
+        "active directory",
+        "activedirectory",
+        "ad",
+        "microsoft active directory"
+      ],
+      "tags": [
+        "active",
+        "directory",
+        "identity"
+      ]
+    },
+    {
+      "id": "identity-entra-id",
+      "name": "Entra Id",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/entra-id.svg",
+      "file": "identity/entra-id.svg",
+      "aliases": [
+        "azure active directory",
+        "azure ad",
+        "entra id",
+        "entraid",
+        "microsoft entra",
+        "microsoft entra id"
+      ],
+      "tags": [
+        "entra",
+        "id",
+        "identity"
+      ]
+    },
+    {
+      "id": "identity-saviynt",
+      "name": "Saviynt",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/saviynt.svg",
+      "file": "identity/saviynt.svg",
+      "aliases": [
+        "saviynt"
+      ],
+      "tags": [
+        "identity",
+        "saviynt"
+      ]
+    },
+    {
+      "id": "identity-okta",
+      "name": "Okta",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/okta.svg",
+      "file": "identity/okta.svg",
+      "aliases": [
+        "okta"
+      ],
+      "tags": [
+        "identity",
+        "okta"
+      ]
+    },
+    {
+      "id": "identity-ping-identity",
+      "name": "Ping Identity",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/ping-identity.svg",
+      "file": "identity/ping-identity.svg",
+      "aliases": [
+        "ping identity",
+        "pingidentity"
+      ],
+      "tags": [
+        "identity",
+        "ping"
+      ]
+    },
+    {
+      "id": "identity-cyberark",
+      "name": "Cyberark",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/cyberark.svg",
+      "file": "identity/cyberark.svg",
+      "aliases": [
+        "cyberark"
+      ],
+      "tags": [
+        "cyberark",
+        "identity"
+      ]
+    },
+    {
+      "id": "identity-ldap",
+      "name": "Ldap",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/ldap.svg",
+      "file": "identity/ldap.svg",
+      "aliases": [
+        "ldap"
+      ],
+      "tags": [
+        "identity",
+        "ldap"
+      ]
+    },
+    {
+      "id": "identity-identity-provider",
+      "name": "Identity Provider",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/identity-provider.svg",
+      "file": "identity/identity-provider.svg",
+      "aliases": [
+        "identity provider",
+        "identityprovider"
+      ],
+      "tags": [
+        "identity",
+        "provider"
+      ]
+    },
+    {
+      "id": "identity-oauth2",
+      "name": "Oauth2",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/oauth2.svg",
+      "file": "identity/oauth2.svg",
+      "aliases": [
+        "oauth",
+        "oauth 2.0",
+        "oauth2"
+      ],
+      "tags": [
+        "identity",
+        "oauth2"
+      ]
+    },
+    {
+      "id": "identity-openid-connect",
+      "name": "Openid Connect",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/openid-connect.svg",
+      "file": "identity/openid-connect.svg",
+      "aliases": [
+        "oidc",
+        "open id connect",
+        "openid connect",
+        "openidconnect"
+      ],
+      "tags": [
+        "connect",
+        "identity",
+        "openid"
+      ]
+    },
+    {
+      "id": "identity-saml",
+      "name": "Saml",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/saml.svg",
+      "file": "identity/saml.svg",
+      "aliases": [
+        "saml"
+      ],
+      "tags": [
+        "identity",
+        "saml"
+      ]
+    },
+    {
+      "id": "identity-scim",
+      "name": "Scim",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/scim.svg",
+      "file": "identity/scim.svg",
+      "aliases": [
+        "scim"
+      ],
+      "tags": [
+        "identity",
+        "scim"
+      ]
+    },
+    {
+      "id": "identity-radius",
+      "name": "Radius",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/radius.svg",
+      "file": "identity/radius.svg",
+      "aliases": [
+        "radius"
+      ],
+      "tags": [
+        "identity",
+        "radius"
+      ]
+    },
+    {
+      "id": "identity-mfa",
+      "name": "Mfa",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/mfa.svg",
+      "file": "identity/mfa.svg",
+      "aliases": [
+        "mfa"
+      ],
+      "tags": [
+        "identity",
+        "mfa"
+      ]
+    },
+    {
+      "id": "identity-sso",
+      "name": "Sso",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/sso.svg",
+      "file": "identity/sso.svg",
+      "aliases": [
+        "sso"
+      ],
+      "tags": [
+        "identity",
+        "sso"
+      ]
+    },
+    {
+      "id": "identity-password-vault",
+      "name": "Password Vault",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/password-vault.svg",
+      "file": "identity/password-vault.svg",
+      "aliases": [
+        "password vault",
+        "passwordvault"
+      ],
+      "tags": [
+        "identity",
+        "password",
+        "vault"
+      ]
+    },
+    {
+      "id": "identity-pam",
+      "name": "Pam",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/pam.svg",
+      "file": "identity/pam.svg",
+      "aliases": [
+        "pam"
+      ],
+      "tags": [
+        "identity",
+        "pam"
+      ]
+    },
+    {
+      "id": "identity-privileged-access",
+      "name": "Privileged Access",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/privileged-access.svg",
+      "file": "identity/privileged-access.svg",
+      "aliases": [
+        "privileged access",
+        "privilegedaccess"
+      ],
+      "tags": [
+        "access",
+        "identity",
+        "privileged"
+      ]
+    },
+    {
+      "id": "identity-directory",
+      "name": "Directory",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/directory.svg",
+      "file": "identity/directory.svg",
+      "aliases": [
+        "directory"
+      ],
+      "tags": [
+        "directory",
+        "identity"
+      ]
+    },
+    {
+      "id": "identity-user",
+      "name": "User",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/user.svg",
+      "file": "identity/user.svg",
+      "aliases": [
+        "user"
+      ],
+      "tags": [
+        "identity",
+        "user"
+      ]
+    },
+    {
+      "id": "identity-group",
+      "name": "Group",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/group.svg",
+      "file": "identity/group.svg",
+      "aliases": [
+        "group"
+      ],
+      "tags": [
+        "group",
+        "identity"
+      ]
+    },
+    {
+      "id": "identity-role",
+      "name": "Role",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/role.svg",
+      "file": "identity/role.svg",
+      "aliases": [
+        "role"
+      ],
+      "tags": [
+        "identity",
+        "role"
+      ]
+    },
+    {
+      "id": "identity-entitlement",
+      "name": "Entitlement",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/entitlement.svg",
+      "file": "identity/entitlement.svg",
+      "aliases": [
+        "entitlement"
+      ],
+      "tags": [
+        "entitlement",
+        "identity"
+      ]
+    },
+    {
+      "id": "identity-access-request",
+      "name": "Access Request",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/access-request.svg",
+      "file": "identity/access-request.svg",
+      "aliases": [
+        "access request",
+        "accessrequest"
+      ],
+      "tags": [
+        "access",
+        "identity",
+        "request"
+      ]
+    },
+    {
+      "id": "identity-provisioning",
+      "name": "Provisioning",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/provisioning.svg",
+      "file": "identity/provisioning.svg",
+      "aliases": [
+        "provisioning"
+      ],
+      "tags": [
+        "identity",
+        "provisioning"
+      ]
+    },
+    {
+      "id": "identity-deprovisioning",
+      "name": "Deprovisioning",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/deprovisioning.svg",
+      "file": "identity/deprovisioning.svg",
+      "aliases": [
+        "deprovisioning"
+      ],
+      "tags": [
+        "deprovisioning",
+        "identity"
+      ]
+    },
+    {
+      "id": "identity-identity-governance",
+      "name": "Identity Governance",
+      "provider": "identity",
+      "category": "identity",
+      "path": "/static/icons/identity/identity-governance.svg",
+      "file": "identity/identity-governance.svg",
+      "aliases": [
+        "identity governance",
+        "identitygovernance"
+      ],
+      "tags": [
+        "governance",
+        "identity"
+      ]
+    },
+    {
+      "id": "security-firewall",
+      "name": "Firewall",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/firewall.svg",
+      "file": "security/firewall.svg",
+      "aliases": [
+        "firewall"
+      ],
+      "tags": [
+        "firewall",
+        "security"
+      ]
+    },
+    {
+      "id": "security-web-application-firewall",
+      "name": "Web Application Firewall",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/web-application-firewall.svg",
+      "file": "security/web-application-firewall.svg",
+      "aliases": [
+        "waf",
+        "web application firewall",
+        "webapplicationfirewall"
+      ],
+      "tags": [
+        "application",
+        "firewall",
+        "security",
+        "web"
+      ]
+    },
+    {
+      "id": "security-dmz",
+      "name": "Dmz",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/dmz.svg",
+      "file": "security/dmz.svg",
+      "aliases": [
+        "dmz"
+      ],
+      "tags": [
+        "dmz",
+        "security"
+      ]
+    },
+    {
+      "id": "security-security-zone",
+      "name": "Security Zone",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/security-zone.svg",
+      "file": "security/security-zone.svg",
+      "aliases": [
+        "security zone",
+        "securityzone"
+      ],
+      "tags": [
+        "security",
+        "zone"
+      ]
+    },
+    {
+      "id": "security-vpn",
+      "name": "Vpn",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/vpn.svg",
+      "file": "security/vpn.svg",
+      "aliases": [
+        "vpn"
+      ],
+      "tags": [
+        "security",
+        "vpn"
+      ]
+    },
+    {
+      "id": "security-zero-trust",
+      "name": "Zero Trust",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/zero-trust.svg",
+      "file": "security/zero-trust.svg",
+      "aliases": [
+        "zero trust",
+        "zerotrust"
+      ],
+      "tags": [
+        "security",
+        "trust",
+        "zero"
+      ]
+    },
+    {
+      "id": "security-certificate",
+      "name": "Certificate",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/certificate.svg",
+      "file": "security/certificate.svg",
+      "aliases": [
+        "certificate"
+      ],
+      "tags": [
+        "certificate",
+        "security"
+      ]
+    },
+    {
+      "id": "security-tls",
+      "name": "Tls",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/tls.svg",
+      "file": "security/tls.svg",
+      "aliases": [
+        "tls"
+      ],
+      "tags": [
+        "security",
+        "tls"
+      ]
+    },
+    {
+      "id": "security-encryption",
+      "name": "Encryption",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/encryption.svg",
+      "file": "security/encryption.svg",
+      "aliases": [
+        "encryption"
+      ],
+      "tags": [
+        "encryption",
+        "security"
+      ]
+    },
+    {
+      "id": "security-secrets",
+      "name": "Secrets",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/secrets.svg",
+      "file": "security/secrets.svg",
+      "aliases": [
+        "secrets"
+      ],
+      "tags": [
+        "secrets",
+        "security"
+      ]
+    },
+    {
+      "id": "security-key-management",
+      "name": "Key Management",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/key-management.svg",
+      "file": "security/key-management.svg",
+      "aliases": [
+        "key management",
+        "keymanagement"
+      ],
+      "tags": [
+        "key",
+        "management",
+        "security"
+      ]
+    },
+    {
+      "id": "security-siem",
+      "name": "Siem",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/siem.svg",
+      "file": "security/siem.svg",
+      "aliases": [
+        "siem"
+      ],
+      "tags": [
+        "security",
+        "siem"
+      ]
+    },
+    {
+      "id": "security-soar",
+      "name": "Soar",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/soar.svg",
+      "file": "security/soar.svg",
+      "aliases": [
+        "soar"
+      ],
+      "tags": [
+        "security",
+        "soar"
+      ]
+    },
+    {
+      "id": "security-soc",
+      "name": "Soc",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/soc.svg",
+      "file": "security/soc.svg",
+      "aliases": [
+        "soc"
+      ],
+      "tags": [
+        "security",
+        "soc"
+      ]
+    },
+    {
+      "id": "security-threat-detection",
+      "name": "Threat Detection",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/threat-detection.svg",
+      "file": "security/threat-detection.svg",
+      "aliases": [
+        "threat detection",
+        "threatdetection"
+      ],
+      "tags": [
+        "detection",
+        "security",
+        "threat"
+      ]
+    },
+    {
+      "id": "security-ids",
+      "name": "Ids",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/ids.svg",
+      "file": "security/ids.svg",
+      "aliases": [
+        "ids"
+      ],
+      "tags": [
+        "ids",
+        "security"
+      ]
+    },
+    {
+      "id": "security-ips",
+      "name": "Ips",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/ips.svg",
+      "file": "security/ips.svg",
+      "aliases": [
+        "ips"
+      ],
+      "tags": [
+        "ips",
+        "security"
+      ]
+    },
+    {
+      "id": "security-security-gateway",
+      "name": "Security Gateway",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/security-gateway.svg",
+      "file": "security/security-gateway.svg",
+      "aliases": [
+        "security gateway",
+        "securitygateway"
+      ],
+      "tags": [
+        "gateway",
+        "security"
+      ]
+    },
+    {
+      "id": "security-bastion-host",
+      "name": "Bastion Host",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/bastion-host.svg",
+      "file": "security/bastion-host.svg",
+      "aliases": [
+        "bastion host",
+        "bastionhost"
+      ],
+      "tags": [
+        "bastion",
+        "host",
+        "security"
+      ]
+    },
+    {
+      "id": "security-proxy",
+      "name": "Proxy",
+      "provider": "security",
+      "category": "security",
+      "path": "/static/icons/security/proxy.svg",
+      "file": "security/proxy.svg",
+      "aliases": [
+        "proxy"
+      ],
+      "tags": [
+        "proxy",
+        "security"
+      ]
+    },
+    {
+      "id": "databases-postgresql",
+      "name": "Postgresql",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/postgresql.svg",
+      "file": "databases/postgresql.svg",
+      "aliases": [
+        "postgresql"
+      ],
+      "tags": [
+        "databases",
+        "postgresql"
+      ]
+    },
+    {
+      "id": "databases-mysql",
+      "name": "Mysql",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/mysql.svg",
+      "file": "databases/mysql.svg",
+      "aliases": [
+        "mysql"
+      ],
+      "tags": [
+        "databases",
+        "mysql"
+      ]
+    },
+    {
+      "id": "databases-mongodb",
+      "name": "Mongodb",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/mongodb.svg",
+      "file": "databases/mongodb.svg",
+      "aliases": [
+        "mongodb"
+      ],
+      "tags": [
+        "databases",
+        "mongodb"
+      ]
+    },
+    {
+      "id": "databases-redis",
+      "name": "Redis",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/redis.svg",
+      "file": "databases/redis.svg",
+      "aliases": [
+        "redis"
+      ],
+      "tags": [
+        "databases",
+        "redis"
+      ]
+    },
+    {
+      "id": "databases-oracle-database",
+      "name": "Oracle Database",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/oracle-database.svg",
+      "file": "databases/oracle-database.svg",
+      "aliases": [
+        "oracle database",
+        "oracledatabase"
+      ],
+      "tags": [
+        "database",
+        "databases",
+        "oracle"
+      ]
+    },
+    {
+      "id": "databases-sql-server",
+      "name": "Sql Server",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/sql-server.svg",
+      "file": "databases/sql-server.svg",
+      "aliases": [
+        "microsoft sql server",
+        "mssql",
+        "sql server",
+        "sqlserver"
+      ],
+      "tags": [
+        "databases",
+        "server",
+        "sql"
+      ]
+    },
+    {
+      "id": "databases-mariadb",
+      "name": "Mariadb",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/mariadb.svg",
+      "file": "databases/mariadb.svg",
+      "aliases": [
+        "mariadb"
+      ],
+      "tags": [
+        "databases",
+        "mariadb"
+      ]
+    },
+    {
+      "id": "databases-cassandra",
+      "name": "Cassandra",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/cassandra.svg",
+      "file": "databases/cassandra.svg",
+      "aliases": [
+        "cassandra"
+      ],
+      "tags": [
+        "cassandra",
+        "databases"
+      ]
+    },
+    {
+      "id": "databases-elasticsearch",
+      "name": "Elasticsearch",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/elasticsearch.svg",
+      "file": "databases/elasticsearch.svg",
+      "aliases": [
+        "elasticsearch"
+      ],
+      "tags": [
+        "databases",
+        "elasticsearch"
+      ]
+    },
+    {
+      "id": "databases-neo4j",
+      "name": "Neo4J",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/neo4j.svg",
+      "file": "databases/neo4j.svg",
+      "aliases": [
+        "neo4j"
+      ],
+      "tags": [
+        "databases",
+        "neo4j"
+      ]
+    },
+    {
+      "id": "databases-database",
+      "name": "Database",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/database.svg",
+      "file": "databases/database.svg",
+      "aliases": [
+        "database"
+      ],
+      "tags": [
+        "database",
+        "databases"
+      ]
+    },
+    {
+      "id": "databases-data-warehouse",
+      "name": "Data Warehouse",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/data-warehouse.svg",
+      "file": "databases/data-warehouse.svg",
+      "aliases": [
+        "data warehouse",
+        "datawarehouse"
+      ],
+      "tags": [
+        "data",
+        "databases",
+        "warehouse"
+      ]
+    },
+    {
+      "id": "databases-data-lake",
+      "name": "Data Lake",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/data-lake.svg",
+      "file": "databases/data-lake.svg",
+      "aliases": [
+        "data lake",
+        "datalake"
+      ],
+      "tags": [
+        "data",
+        "databases",
+        "lake"
+      ]
+    },
+    {
+      "id": "databases-data-store",
+      "name": "Data Store",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/data-store.svg",
+      "file": "databases/data-store.svg",
+      "aliases": [
+        "data store",
+        "datastore"
+      ],
+      "tags": [
+        "data",
+        "databases",
+        "store"
+      ]
+    },
+    {
+      "id": "databases-cache",
+      "name": "Cache",
+      "provider": "databases",
+      "category": "databases",
+      "path": "/static/icons/databases/cache.svg",
+      "file": "databases/cache.svg",
+      "aliases": [
+        "cache"
+      ],
+      "tags": [
+        "cache",
+        "databases"
+      ]
+    },
+    {
+      "id": "integration-kafka",
+      "name": "Kafka",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/kafka.svg",
+      "file": "integration/kafka.svg",
+      "aliases": [
+        "kafka"
+      ],
+      "tags": [
+        "integration",
+        "kafka"
+      ]
+    },
+    {
+      "id": "integration-rabbitmq",
+      "name": "Rabbitmq",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/rabbitmq.svg",
+      "file": "integration/rabbitmq.svg",
+      "aliases": [
+        "rabbitmq"
+      ],
+      "tags": [
+        "integration",
+        "rabbitmq"
+      ]
+    },
+    {
+      "id": "integration-ibm-mq",
+      "name": "Ibm Mq",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/ibm-mq.svg",
+      "file": "integration/ibm-mq.svg",
+      "aliases": [
+        "ibm mq",
+        "ibmmq"
+      ],
+      "tags": [
+        "ibm",
+        "integration",
+        "mq"
+      ]
+    },
+    {
+      "id": "integration-webhook",
+      "name": "Webhook",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/webhook.svg",
+      "file": "integration/webhook.svg",
+      "aliases": [
+        "webhook"
+      ],
+      "tags": [
+        "integration",
+        "webhook"
+      ]
+    },
+    {
+      "id": "integration-rest-api",
+      "name": "Rest Api",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/rest-api.svg",
+      "file": "integration/rest-api.svg",
+      "aliases": [
+        "rest api",
+        "restapi"
+      ],
+      "tags": [
+        "api",
+        "integration",
+        "rest"
+      ]
+    },
+    {
+      "id": "integration-graphql",
+      "name": "Graphql",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/graphql.svg",
+      "file": "integration/graphql.svg",
+      "aliases": [
+        "graphql"
+      ],
+      "tags": [
+        "graphql",
+        "integration"
+      ]
+    },
+    {
+      "id": "integration-soap",
+      "name": "Soap",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/soap.svg",
+      "file": "integration/soap.svg",
+      "aliases": [
+        "soap"
+      ],
+      "tags": [
+        "integration",
+        "soap"
+      ]
+    },
+    {
+      "id": "integration-message-queue",
+      "name": "Message Queue",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/message-queue.svg",
+      "file": "integration/message-queue.svg",
+      "aliases": [
+        "message queue",
+        "messagequeue"
+      ],
+      "tags": [
+        "integration",
+        "message",
+        "queue"
+      ]
+    },
+    {
+      "id": "integration-event-bus",
+      "name": "Event Bus",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/event-bus.svg",
+      "file": "integration/event-bus.svg",
+      "aliases": [
+        "event bus",
+        "eventbus"
+      ],
+      "tags": [
+        "bus",
+        "event",
+        "integration"
+      ]
+    },
+    {
+      "id": "integration-event-stream",
+      "name": "Event Stream",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/event-stream.svg",
+      "file": "integration/event-stream.svg",
+      "aliases": [
+        "event stream",
+        "eventstream"
+      ],
+      "tags": [
+        "event",
+        "integration",
+        "stream"
+      ]
+    },
+    {
+      "id": "integration-api",
+      "name": "Api",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/api.svg",
+      "file": "integration/api.svg",
+      "aliases": [
+        "api"
+      ],
+      "tags": [
+        "api",
+        "integration"
+      ]
+    },
+    {
+      "id": "integration-integration",
+      "name": "Integration",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/integration.svg",
+      "file": "integration/integration.svg",
+      "aliases": [
+        "integration"
+      ],
+      "tags": [
+        "integration"
+      ]
+    },
+    {
+      "id": "integration-etl",
+      "name": "Etl",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/etl.svg",
+      "file": "integration/etl.svg",
+      "aliases": [
+        "etl"
+      ],
+      "tags": [
+        "etl",
+        "integration"
+      ]
+    },
+    {
+      "id": "integration-batch",
+      "name": "Batch",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/batch.svg",
+      "file": "integration/batch.svg",
+      "aliases": [
+        "batch"
+      ],
+      "tags": [
+        "batch",
+        "integration"
+      ]
+    },
+    {
+      "id": "integration-file-transfer",
+      "name": "File Transfer",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/file-transfer.svg",
+      "file": "integration/file-transfer.svg",
+      "aliases": [
+        "file transfer",
+        "filetransfer"
+      ],
+      "tags": [
+        "file",
+        "integration",
+        "transfer"
+      ]
+    },
+    {
+      "id": "integration-sftp",
+      "name": "Sftp",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/sftp.svg",
+      "file": "integration/sftp.svg",
+      "aliases": [
+        "sftp"
+      ],
+      "tags": [
+        "integration",
+        "sftp"
+      ]
+    },
+    {
+      "id": "integration-connector",
+      "name": "Connector",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/connector.svg",
+      "file": "integration/connector.svg",
+      "aliases": [
+        "connector"
+      ],
+      "tags": [
+        "connector",
+        "integration"
+      ]
+    },
+    {
+      "id": "integration-adapter",
+      "name": "Adapter",
+      "provider": "integration",
+      "category": "integration",
+      "path": "/static/icons/integration/adapter.svg",
+      "file": "integration/adapter.svg",
+      "aliases": [
+        "adapter"
+      ],
+      "tags": [
+        "adapter",
+        "integration"
+      ]
+    },
+    {
+      "id": "enterprise-user",
+      "name": "User",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/user.svg",
+      "file": "enterprise/user.svg",
+      "aliases": [
+        "user"
+      ],
+      "tags": [
+        "enterprise",
+        "user"
+      ]
+    },
+    {
+      "id": "enterprise-administrator",
+      "name": "Administrator",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/administrator.svg",
+      "file": "enterprise/administrator.svg",
+      "aliases": [
+        "administrator"
+      ],
+      "tags": [
+        "administrator",
+        "enterprise"
+      ]
+    },
+    {
+      "id": "enterprise-mobile-user",
+      "name": "Mobile User",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/mobile-user.svg",
+      "file": "enterprise/mobile-user.svg",
+      "aliases": [
+        "mobile user",
+        "mobileuser"
+      ],
+      "tags": [
+        "enterprise",
+        "mobile",
+        "user"
+      ]
+    },
+    {
+      "id": "enterprise-browser",
+      "name": "Browser",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/browser.svg",
+      "file": "enterprise/browser.svg",
+      "aliases": [
+        "browser"
+      ],
+      "tags": [
+        "browser",
+        "enterprise"
+      ]
+    },
+    {
+      "id": "enterprise-web-application",
+      "name": "Web Application",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/web-application.svg",
+      "file": "enterprise/web-application.svg",
+      "aliases": [
+        "web application",
+        "webapplication"
+      ],
+      "tags": [
+        "application",
+        "enterprise",
+        "web"
+      ]
+    },
+    {
+      "id": "enterprise-enterprise-application",
+      "name": "Enterprise Application",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/enterprise-application.svg",
+      "file": "enterprise/enterprise-application.svg",
+      "aliases": [
+        "enterprise application",
+        "enterpriseapplication"
+      ],
+      "tags": [
+        "application",
+        "enterprise"
+      ]
+    },
+    {
+      "id": "enterprise-legacy-application",
+      "name": "Legacy Application",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/legacy-application.svg",
+      "file": "enterprise/legacy-application.svg",
+      "aliases": [
+        "legacy application",
+        "legacyapplication"
+      ],
+      "tags": [
+        "application",
+        "enterprise",
+        "legacy"
+      ]
+    },
+    {
+      "id": "enterprise-saas",
+      "name": "Saas",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/saas.svg",
+      "file": "enterprise/saas.svg",
+      "aliases": [
+        "saas"
+      ],
+      "tags": [
+        "enterprise",
+        "saas"
+      ]
+    },
+    {
+      "id": "enterprise-external-system",
+      "name": "External System",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/external-system.svg",
+      "file": "enterprise/external-system.svg",
+      "aliases": [
+        "external system",
+        "externalsystem"
+      ],
+      "tags": [
+        "enterprise",
+        "external",
+        "system"
+      ]
+    },
+    {
+      "id": "enterprise-on-premises",
+      "name": "On Premises",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/on-premises.svg",
+      "file": "enterprise/on-premises.svg",
+      "aliases": [
+        "on premises",
+        "onpremises"
+      ],
+      "tags": [
+        "enterprise",
+        "on",
+        "premises"
+      ]
+    },
+    {
+      "id": "enterprise-data-center",
+      "name": "Data Center",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/data-center.svg",
+      "file": "enterprise/data-center.svg",
+      "aliases": [
+        "data center",
+        "datacenter"
+      ],
+      "tags": [
+        "center",
+        "data",
+        "enterprise"
+      ]
+    },
+    {
+      "id": "enterprise-server",
+      "name": "Server",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/server.svg",
+      "file": "enterprise/server.svg",
+      "aliases": [
+        "server"
+      ],
+      "tags": [
+        "enterprise",
+        "server"
+      ]
+    },
+    {
+      "id": "enterprise-virtual-server",
+      "name": "Virtual Server",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/virtual-server.svg",
+      "file": "enterprise/virtual-server.svg",
+      "aliases": [
+        "virtual server",
+        "virtualserver"
+      ],
+      "tags": [
+        "enterprise",
+        "server",
+        "virtual"
+      ]
+    },
+    {
+      "id": "enterprise-network",
+      "name": "Network",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/network.svg",
+      "file": "enterprise/network.svg",
+      "aliases": [
+        "network"
+      ],
+      "tags": [
+        "enterprise",
+        "network"
+      ]
+    },
+    {
+      "id": "enterprise-internet",
+      "name": "Internet",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/internet.svg",
+      "file": "enterprise/internet.svg",
+      "aliases": [
+        "internet"
+      ],
+      "tags": [
+        "enterprise",
+        "internet"
+      ]
+    },
+    {
+      "id": "enterprise-partner",
+      "name": "Partner",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/partner.svg",
+      "file": "enterprise/partner.svg",
+      "aliases": [
+        "partner"
+      ],
+      "tags": [
+        "enterprise",
+        "partner"
+      ]
+    },
+    {
+      "id": "enterprise-vendor",
+      "name": "Vendor",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/vendor.svg",
+      "file": "enterprise/vendor.svg",
+      "aliases": [
+        "vendor"
+      ],
+      "tags": [
+        "enterprise",
+        "vendor"
+      ]
+    },
+    {
+      "id": "enterprise-customer",
+      "name": "Customer",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/customer.svg",
+      "file": "enterprise/customer.svg",
+      "aliases": [
+        "customer"
+      ],
+      "tags": [
+        "customer",
+        "enterprise"
+      ]
+    },
+    {
+      "id": "enterprise-third-party",
+      "name": "Third Party",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/third-party.svg",
+      "file": "enterprise/third-party.svg",
+      "aliases": [
+        "third party",
+        "thirdparty"
+      ],
+      "tags": [
+        "enterprise",
+        "party",
+        "third"
+      ]
+    },
+    {
+      "id": "enterprise-organization",
+      "name": "Organization",
+      "provider": "enterprise",
+      "category": "enterprise",
+      "path": "/static/icons/enterprise/organization.svg",
+      "file": "enterprise/organization.svg",
+      "aliases": [
+        "organization"
+      ],
+      "tags": [
+        "enterprise",
+        "organization"
+      ]
+    },
+    {
+      "id": "observability-monitoring",
+      "name": "Monitoring",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/monitoring.svg",
+      "file": "observability/monitoring.svg",
+      "aliases": [
+        "monitoring"
+      ],
+      "tags": [
+        "monitoring",
+        "observability"
+      ]
+    },
+    {
+      "id": "observability-logging",
+      "name": "Logging",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/logging.svg",
+      "file": "observability/logging.svg",
+      "aliases": [
+        "logging"
+      ],
+      "tags": [
+        "logging",
+        "observability"
+      ]
+    },
+    {
+      "id": "observability-tracing",
+      "name": "Tracing",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/tracing.svg",
+      "file": "observability/tracing.svg",
+      "aliases": [
+        "tracing"
+      ],
+      "tags": [
+        "observability",
+        "tracing"
+      ]
+    },
+    {
+      "id": "observability-metrics",
+      "name": "Metrics",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/metrics.svg",
+      "file": "observability/metrics.svg",
+      "aliases": [
+        "metrics"
+      ],
+      "tags": [
+        "metrics",
+        "observability"
+      ]
+    },
+    {
+      "id": "observability-alerting",
+      "name": "Alerting",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/alerting.svg",
+      "file": "observability/alerting.svg",
+      "aliases": [
+        "alerting"
+      ],
+      "tags": [
+        "alerting",
+        "observability"
+      ]
+    },
+    {
+      "id": "observability-dashboard",
+      "name": "Dashboard",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/dashboard.svg",
+      "file": "observability/dashboard.svg",
+      "aliases": [
+        "dashboard"
+      ],
+      "tags": [
+        "dashboard",
+        "observability"
+      ]
+    },
+    {
+      "id": "observability-audit",
+      "name": "Audit",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/audit.svg",
+      "file": "observability/audit.svg",
+      "aliases": [
+        "audit"
+      ],
+      "tags": [
+        "audit",
+        "observability"
+      ]
+    },
+    {
+      "id": "observability-health-check",
+      "name": "Health Check",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/health-check.svg",
+      "file": "observability/health-check.svg",
+      "aliases": [
+        "health check",
+        "healthcheck"
+      ],
+      "tags": [
+        "check",
+        "health",
+        "observability"
+      ]
+    },
+    {
+      "id": "observability-apm",
+      "name": "Apm",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/apm.svg",
+      "file": "observability/apm.svg",
+      "aliases": [
+        "apm"
+      ],
+      "tags": [
+        "apm",
+        "observability"
+      ]
+    },
+    {
+      "id": "observability-telemetry",
+      "name": "Telemetry",
+      "provider": "observability",
+      "category": "observability",
+      "path": "/static/icons/observability/telemetry.svg",
+      "file": "observability/telemetry.svg",
+      "aliases": [
+        "telemetry"
+      ],
+      "tags": [
+        "observability",
+        "telemetry"
+      ]
+    }
+  ]
+}

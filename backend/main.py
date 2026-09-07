@@ -22,6 +22,8 @@ if os.path.exists(env_path):
 
 import database
 import agent
+from architecture_engine import normalize_diagram, lint_architecture, project_view
+from icon_resolver import search_icons, resolve_icon, load_registry, reload_registry
 
 app = FastAPI(title="Prompt to Design Diagram Generator API")
 
@@ -48,6 +50,13 @@ class GenerateRequest(BaseModel):
 class RefineRequest(BaseModel):
     prompt: str
     current_diagram: dict
+
+class ArchitecturePayload(BaseModel):
+    diagram: dict
+
+class ArchitectureViewRequest(BaseModel):
+    diagram: dict
+    view: str
 
 class ProjectCreateRequest(BaseModel):
     name: str
@@ -106,6 +115,29 @@ def generate_diagram(req: GenerateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/architecture/validate")
+def validate_architecture(req: RefineRequest):
+    """Run the deterministic architecture quality gate without invoking Gemini."""
+    custom_icons = database.get_custom_icons()
+    normalized = agent.normalize_diagram(req.current_diagram, custom_icons)
+    return {
+        "diagram": normalized,
+        "quality": normalized.get("metadata", {}).get("quality", {}),
+        "message": "Architecture quality gate completed"
+    }
+
+@app.post("/api/architecture/lint")
+def lint_architecture_endpoint(req: ArchitecturePayload):
+    """Run Phase 3 architecture linting and return an explainable score."""
+    normalized = normalize_diagram(req.diagram, database.get_custom_icons())
+    return {"diagram": normalized, "lint": lint_architecture(normalized)}
+
+@app.post("/api/architecture/view")
+def architecture_view(req: ArchitectureViewRequest):
+    """Project a full architecture into context/logical/integration/security/data-flow views."""
+    normalized = normalize_diagram(req.diagram, database.get_custom_icons())
+    return project_view(normalized, req.view)
+
 @app.post("/api/refine")
 def refine_diagram(req: RefineRequest):
     custom_icons = database.get_custom_icons()
@@ -114,6 +146,20 @@ def refine_diagram(req: RefineRequest):
         return refined_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/icon-library")
+def icon_library(query: str = "", provider: Optional[str] = None, category: Optional[str] = None, available_only: bool = False):
+    return {"registry": load_registry().get("version"), "icons": search_icons(query, provider, category, available_only)}
+
+@app.get("/api/icon-library/resolve")
+def resolve_icon_endpoint(name: str, provider: Optional[str] = None, category: Optional[str] = None):
+    return resolve_icon(name, provider, category)
+
+@app.post("/api/icon-library/reload")
+def reload_icon_library():
+    registry = reload_registry()
+    return {"status": "success", "version": registry.get("version"), "count": len(registry.get("items", []))}
 
 @app.get("/api/icons")
 def get_custom_icons():
@@ -127,6 +173,8 @@ def get_custom_icons():
 async def upload_custom_icon(
     tag: str = Form(...),
     description: str = Form(...),
+    provider: str = Form("organization"),
+    category: str = Form("application"),
     file: UploadFile = File(...)
 ):
     if not file.filename.lower().endswith(".svg"):
@@ -140,8 +188,8 @@ async def upload_custom_icon(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    database.save_custom_icon(icon_id, tag, description, filename)
-    return {"id": icon_id, "tag": tag, "url": f"/static/icons/{filename}"}
+    database.save_custom_icon(icon_id, tag, description, filename, provider, category)
+    return {"id": icon_id, "tag": tag, "provider": provider, "category": category, "url": f"/static/icons/{filename}"}
 
 @app.delete("/api/icons/{icon_id}")
 def delete_custom_icon(icon_id: str):

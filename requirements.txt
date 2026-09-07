@@ -1,6 +1,6 @@
 fastapi
-uvicorn
-google-genai
+uvicorn[standard]
+pydantic
+google-genai>=1.0.0
+google-auth>=2.0.0
 python-multipart
-google-auth
-google-auth-httplib2

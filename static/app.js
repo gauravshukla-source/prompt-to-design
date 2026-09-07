@@ -290,172 +290,27 @@ function initCanvas() {
 function canvasZoomIn() { cy.zoom(cy.zoom() * 1.2); }
 function canvasZoomOut() { cy.zoom(cy.zoom() * 0.8); }
 function canvasFit() { cy.fit(); }
-<<<<<<< HEAD
-// Deterministic architecture layout. Avoids compound-node overlap and makes connectivity readable.
+// Deterministic architecture pattern inference used by Phase 5.1 composition.
 function inferPatternFromCanvas() {
-    const explicit = cy.data ? cy.data('pattern') : null;
-    if (explicit) return explicit;
-    const labels = cy.nodes().map(n => `${n.data('label')} ${n.data('icon')}`).join(' ').toLowerCase();
-    if (/saviynt|identity governance|iga|scim/.test(labels)) return 'iam';
-    if (/kafka|rabbitmq|event/.test(labels)) return 'event_driven';
-    if (/microservice|service|kubernetes|ecs/.test(labels)) return 'microservices';
+    const explicit = cy && cy.data ? cy.data('pattern') : null;
+    if (explicit && explicit !== 'generic') return String(explicit).toLowerCase();
+
+    const labels = cy.nodes()
+        .filter(n => n.data('type') !== 'group')
+        .map(n => `${n.data('label') || ''} ${n.data('icon') || ''} ${n.data('category') || ''} ${n.data('role') || ''}`)
+        .join(' ')
+        .toLowerCase();
+
+    if (/(saviynt|identity governance|\biga\b|\biam\b|scim|okta|entra|active directory|ldap)/.test(labels)) return 'iam';
+    if (/(kafka|rabbitmq|event|queue|topic|pubsub|service bus)/.test(labels)) return 'event_driven';
+    if (/(on-prem|on prem|direct connect|expressroute|\bvpn\b)/.test(labels)) return 'hybrid_cloud';
+    if (/(zero trust|conditional access|\bmfa\b)/.test(labels)) return 'zero_trust';
+    if (/(ingest|etl|pipeline|warehouse|transform|analytics|bigquery|dataflow)/.test(labels)) return 'data_pipeline';
+    if (/(microservice|kubernetes|ecs|api gateway)/.test(labels)) return 'microservices';
+    if (/(database|rds|sql|dynamodb)/.test(labels) && /(web|load balancer|\balb\b|cloudfront)/.test(labels)) return 'three_tier';
     return 'generic';
-=======
-// Phase 5 — Architecture Pattern Intelligence & Template Engine
-// Template + Hybrid layout. Patterns create the visual composition; graph semantics refine it.
-function canvasAutoLayout(dsl = {}) {
-    if (!cy) return;
-
-    const nodes = cy.nodes().filter(n => n.data('type') !== 'group');
-    if (!nodes.length) return;
-
-    const category = n => String(n.data('category') || 'general').toLowerCase();
-    const label = n => String(n.data('label') || '').toLowerCase();
-    const has = (n, words) => words.some(w => label(n).includes(w) || category(n).includes(w));
-
-    function inferPattern() {
-        const text = nodes.map(n => `${label(n)} ${category(n)}`).join(' ');
-        if (/(saviynt|identity|iga|iam|okta|entra|active directory|ldap|scim)/.test(text)) return 'iam';
-        if (/(kafka|rabbitmq|queue|topic|event|pubsub|service bus)/.test(text)) return 'event_driven';
-        if (/(on-prem|on prem|vpn|direct connect|expressroute)/.test(text)) return 'hybrid_cloud';
-        if (/(zero trust|conditional access|mfa)/.test(text)) return 'zero_trust';
-        if (/(ingest|etl|pipeline|warehouse|transform|analytics|bigquery)/.test(text)) return 'data_pipeline';
-        const apps = nodes.filter(n => ['application','compute'].includes(category(n))).length;
-        if (apps >= 3 || /(microservice|api gateway)/.test(text)) return 'microservices';
-        if (/(database|rds|sql)/.test(text) && /(web|load balancer|alb)/.test(text)) return 'three_tier';
-        return 'generic';
-    }
-
-    const pattern = String(dsl.pattern || inferPattern()).toLowerCase();
-    cy.scratch('architecturePattern', pattern);
-
-    // Remove empty groups but preserve real cloud/network boundaries.
-    cy.nodes().filter(n => n.data('type') === 'group').forEach(g => {
-        if (!nodes.some(n => n.data('parent') === g.id())) cy.remove(g);
-    });
-
-    const W = 250, H = 135, CX = 520, CY = 430;
-    const setColumn = (list, x, spacing = 115) => {
-        list = list.slice().sort((a,b) => a.data('label').localeCompare(b.data('label')));
-        const top = CY - ((list.length - 1) * spacing) / 2;
-        list.forEach((n,i) => n.position({x, y: top + i * spacing}));
-    };
-    const setRow = (list, x, y, spacing = 170) => {
-        list = list.slice().sort((a,b) => a.data('label').localeCompare(b.data('label')));
-        const left = x - ((list.length - 1) * spacing) / 2;
-        list.forEach((n,i) => n.position({x: left + i * spacing, y}));
-    };
-    const bucket = pred => nodes.filter(pred);
-
-    if (pattern === 'three_tier') {
-        const entry = bucket(n => has(n, ['user','client','dns','route 53','cloudfront','waf']));
-        const web = bucket(n => !entry.includes(n) && has(n, ['alb','load balancer','web','gateway','api gateway']));
-        const data = bucket(n => has(n, ['database','rds','sql','dynamodb','cache','storage','s3']));
-        const appNodes = nodes.filter(n => !entry.includes(n) && !web.includes(n) && !data.includes(n));
-        setColumn(entry, 130);
-        setColumn(web, 350);
-        setRow(appNodes, 590, CY, 150);
-        setRow(data, 830, CY, 155);
-    } else if (pattern === 'microservices') {
-        const entry = bucket(n => has(n, ['user','client','gateway','api gateway','load balancer','alb']));
-        const broker = bucket(n => has(n, ['kafka','rabbitmq','queue','topic','service bus','pubsub']));
-        const data = bucket(n => has(n, ['database','rds','sql','dynamodb','cache','storage','s3']));
-        const services = nodes.filter(n => !entry.includes(n) && !broker.includes(n) && !data.includes(n));
-        setColumn(entry, 130);
-        setRow(services, 440, CY, 155);
-        setColumn(broker, 690);
-        setRow(data, 910, CY, 155);
-    } else if (pattern === 'event_driven') {
-        const broker = bucket(n => has(n, ['kafka','rabbitmq','queue','topic','event','pubsub','service bus']));
-        const producers = nodes.filter(n => !broker.includes(n) && !has(n, ['consumer','worker','processor','database','storage']));
-        const consumers = nodes.filter(n => !broker.includes(n) && !producers.includes(n));
-        setRow(producers, 270, 260, 150);
-        setColumn(broker, 520);
-        setRow(consumers, 780, 520, 150);
-    } else if (pattern === 'iam') {
-        const users = bucket(n => has(n, ['user','admin','employee','client']));
-        const idp = bucket(n => has(n, ['identity provider','okta','entra','azure active directory','active directory','ldap']));
-        const iga = bucket(n => has(n, ['saviynt','iga','iam','governance']));
-        const targets = nodes.filter(n => !users.includes(n) && !idp.includes(n) && !iga.includes(n));
-        setColumn(users, 120);
-        setColumn(idp, 340);
-        setColumn(iga, 570);
-        setRow(targets, 840, CY, 155);
-    } else if (pattern === 'hybrid_cloud') {
-        const onprem = bucket(n => has(n, ['on-prem','active directory','ldap','legacy']));
-        const link = bucket(n => has(n, ['vpn','direct connect','expressroute','router']));
-        const cloud = nodes.filter(n => !onprem.includes(n) && !link.includes(n));
-        setRow(onprem, 260, CY, 145);
-        setColumn(link, 520);
-        setRow(cloud, 800, CY, 150);
-    } else if (pattern === 'zero_trust') {
-        const users = bucket(n => has(n, ['user','device','client']));
-        const identity = bucket(n => has(n, ['identity','okta','entra','active directory','mfa']));
-        const security = bucket(n => has(n, ['policy','security','waf','firewall','gateway']));
-        const apps = nodes.filter(n => !users.includes(n) && !identity.includes(n) && !security.includes(n));
-        setColumn(users, 120);
-        setColumn(identity, 350);
-        setColumn(security, 590);
-        setRow(apps, 850, CY, 155);
-    } else if (pattern === 'data_pipeline') {
-        const source = bucket(n => has(n, ['source','database','s3','gcs','file','api']));
-        const ingest = bucket(n => has(n, ['ingest','queue','kafka','pubsub']));
-        const transform = bucket(n => has(n, ['transform','etl','process','lambda','dataflow']));
-        const target = nodes.filter(n => !source.includes(n) && !ingest.includes(n) && !transform.includes(n));
-        setColumn(source, 130);
-        setColumn(ingest, 360);
-        setColumn(transform, 600);
-        setRow(target, 850, CY, 155);
-    } else {
-        const layers = {
-            0: bucket(n => ['external','user','client'].includes(category(n))),
-            1: bucket(n => ['edge','network','dns'].includes(category(n))),
-            2: bucket(n => ['security','identity'].includes(category(n))),
-            3: bucket(n => ['application','compute','general'].includes(category(n))),
-            4: bucket(n => ['integration','messaging'].includes(category(n))),
-            5: bucket(n => ['data','database','storage'].includes(category(n))),
-            6: bucket(n => ['observability'].includes(category(n)))
-        };
-        Object.entries(layers).forEach(([k,list]) => setColumn(list, 120 + Number(k) * 220));
-    }
-
-    // Re-apply compound groups after template placement. Real boundaries contain nodes;
-    // templates control positions rather than the groups controlling the whole layout.
-    const groups = cy.nodes().filter(n => n.data('type') === 'group');
-    groups.forEach(g => {
-        g.removeClass('pattern-cloud pattern-network pattern-subtle');
-        const gt = String(g.data('group_type') || '').toLowerCase();
-        if (['vpc','azureresourcegroup','generic'].includes(gt)) g.addClass('pattern-cloud');
-        else if (['subnet','kubernetescluster'].includes(gt)) g.addClass('pattern-network');
-        else g.addClass('pattern-subtle');
-    });
-
-    // Orthogonal connectors after final node placement.
-    cy.edges().forEach(e => {
-        const kind = String(e.data('kind') || '').toLowerCase();
-        const raw = `${e.data('label') || ''} ${e.data('protocol') || ''} ${kind}`.toLowerCase();
-        e.removeClass('edge-async edge-auth edge-data edge-monitor');
-        if (kind === 'async' || /(kafka|queue|topic|amqp|event|pubsub)/.test(raw)) e.addClass('edge-async');
-        else if (kind === 'auth' || /(oauth|oidc|saml|ldap|scim)/.test(raw)) e.addClass('edge-auth');
-        else if (kind === 'data' || /(jdbc|sql|database|replication)/.test(raw)) e.addClass('edge-data');
-        else if (/(metric|log|trace|monitor)/.test(raw)) e.addClass('edge-monitor');
-    });
-
-// Apply connector routing after all node positions are finalized
-const edges = cy.edges();
-
-edges.forEach(edge => {
-    edge.style({
-        'curve-style': 'taxi',
-        'taxi-direction': 'rightward',
-        'taxi-turn': '50%',
-        'taxi-turn-min-distance': 25
-    });
-});
-
-    cy.fit(cy.elements(), 80);
->>>>>>> 7d59d0b92a2d37dd28188d6956ed306246b98f54
 }
+
 
 function roleOrder(pattern) {
     const common = ['external_actor','edge_entry','security_control','identity_provider','traffic_router','primary_component','infrastructure_container','peer_service','integration','event_backbone','transactional_data','data_store','cache','target_application','observability'];

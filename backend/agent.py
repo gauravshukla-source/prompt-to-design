@@ -47,6 +47,14 @@ class Group(BaseModel):
 
 class DiagramSchema(BaseModel):
     diagramType: str = Field(..., description="Type of diagram: 'architecture', 'integration', 'flowchart'")
+    pattern: Optional[str] = Field(
+        None,
+        description="Architecture pattern: three_tier, microservices, event_driven, iam, hybrid_cloud, zero_trust, data_pipeline, generic"
+    )
+    layoutStrategy: Optional[str] = Field(
+        None,
+        description="Preferred layout strategy: pattern_template, hybrid, or generic"
+    )
     groups: List[Group]
     nodes: List[Node]
     edges: List[Edge]
@@ -55,6 +63,18 @@ class DiagramSchema(BaseModel):
 SYSTEM_PROMPT = """
 You are a principal Enterprise Solutions Architect. Produce clean, publication-quality architecture diagram specifications inspired by AWS Architecture Center, Microsoft Azure Architecture Center, and Google Cloud reference architectures.
 The renderer owns coordinates; you own semantic architecture.
+PHASE 5 ARCHITECTURE PATTERN INTELLIGENCE:
+Before creating nodes, classify the architecture into exactly one primary pattern:
+- three_tier: client/web -> application -> data
+- microservices: gateway/entry -> multiple peer services -> data/messaging
+- event_driven: producers -> broker/topic/queue -> consumers
+- iam: users/admins -> identity provider -> IGA/IAM -> directories/SaaS/targets
+- hybrid_cloud: on-prem boundary <-> VPN/Direct Connect/ExpressRoute <-> cloud boundary
+- zero_trust: user/device -> identity -> policy/security -> application/resources
+- data_pipeline: sources -> ingest -> transform/process -> warehouse/lake/analytics
+- generic: only when no pattern fits
+Set pattern and layoutStrategy="pattern_template" when confidence is high; otherwise use layoutStrategy="hybrid".
+
 CRITICAL RULES:
 1. Organize architecture left-to-right into 4-7 logical layers: External/Users -> Edge/Network -> Application/Compute -> Integration/Messaging -> Data -> Identity/Security/Observability.
 2. Assign every node a category and layer. Keep peers in the same layer.
@@ -86,7 +106,7 @@ def check_auth_status() -> dict:
     """
     gcp_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_PROJECT_ID", "architecture-diagram-500204")
     gcp_location = os.environ.get("GCP_LOCATION", "us-central1")
-    model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
     try:
         creds, proj = google.auth.default()
@@ -133,8 +153,8 @@ def _generate_with_model_fallback(client: genai.Client, contents: str, config: t
     Tries the configured model first, and gracefully falls back to other standard
     Vertex AI Gemini models in the region if a 404 NOT_FOUND occurs.
     """
-    preferred_model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
-    models_to_try = [preferred_model, "gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro"]
+    preferred_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    models_to_try = [preferred_model, "gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"]
     
     # De-duplicate while preserving priority order
     seen = set()
@@ -156,14 +176,39 @@ def _generate_with_model_fallback(client: genai.Client, contents: str, config: t
             raise err
     raise last_error
 
+
+def infer_architecture_pattern(diagram: dict) -> str:
+    """Infer a stable visual pattern from semantics when the model omits one."""
+    labels = " ".join(
+        f"{n.get('data', {}).get('label', '')} {n.get('data', {}).get('category', '')} {n.get('data', {}).get('icon', '')}"
+        for n in diagram.get("nodes", [])
+    ).lower()
+
+    scores = {
+        "iam": sum(k in labels for k in ["saviynt", "identity", "iga", "iam", "okta", "entra", "active directory", "ldap", "scim"]),
+        "event_driven": sum(k in labels for k in ["kafka", "rabbitmq", "queue", "topic", "event", "pubsub", "service bus"]),
+        "hybrid_cloud": sum(k in labels for k in ["on-prem", "on prem", "vpn", "direct connect", "expressroute"]) +
+                        (1 if any((n.get("data", {}).get("provider") or "") == "aws" for n in diagram.get("nodes", [])) else 0),
+        "zero_trust": sum(k in labels for k in ["zero trust", "policy", "device", "conditional access", "mfa"]),
+        "data_pipeline": sum(k in labels for k in ["ingest", "etl", "pipeline", "warehouse", "bigquery", "transform", "analytics"]),
+        "microservices": sum(k in labels for k in ["microservice", "api gateway", "service"]) +
+                         (1 if len([n for n in diagram.get("nodes", []) if (n.get("data", {}).get("category") or "") in ["application","compute"]]) >= 3 else 0),
+        "three_tier": sum(k in labels for k in ["web", "load balancer", "application", "database", "rds", "sql"])
+    }
+    best = max(scores, key=scores.get)
+    return best if scores[best] >= 2 else "generic"
+
+
 def normalize_diagram(diagram: dict) -> dict:
-    """Apply deterministic architecture semantics so rendering does not depend on model layout quality."""
+    """Apply deterministic architecture semantics and Phase 5 pattern metadata."""
     category_layer = {
-        "external": 0, "user": 0, "edge": 1, "network": 1,
-        "compute": 2, "application": 2, "general": 2,
-        "integration": 3, "messaging": 3,
-        "data": 4, "database": 4, "storage": 4,
-        "identity": 5, "security": 5, "observability": 5,
+        "external": 0, "user": 0, "client": 0,
+        "edge": 1, "network": 1, "dns": 1,
+        "security": 2, "identity": 2,
+        "compute": 3, "application": 3, "general": 3,
+        "integration": 4, "messaging": 4,
+        "data": 5, "database": 5, "storage": 5,
+        "observability": 6,
     }
     valid_icons = {
         "aws-api-gateway","aws-rds","aws-ecs","aws-s3","aws-lambda","aws-ec2","aws-alb","aws-cloudfront",
@@ -172,26 +217,41 @@ def normalize_diagram(diagram: dict) -> dict:
         "kafka","rabbitmq","kubernetes","load-balancer","firewall","router","dns","database","server","client","user","cog"
     }
     custom = {i.get("tag") for i in diagram.get("custom_icons", [])}
+
     for n in diagram.get("nodes", []):
         data = n.setdefault("data", {})
         category = (data.get("category") or "general").lower()
         data["category"] = category
-        data["layer"] = category_layer.get(category, data.get("layer", 2))
+        data["layer"] = category_layer.get(category, data.get("layer", 3))
         if data.get("icon") not in valid_icons and data.get("icon") not in custom:
             data["icon"] = "server"
         if not data.get("provider"):
             icon = data.get("icon", "")
             data["provider"] = "aws" if icon.startswith("aws-") else "azure" if icon.startswith("azure-") else "gcp" if icon.startswith("gcp-") else "generic"
-    seen = set(); cleaned = []
+
+    seen = set()
+    cleaned = []
     for e in diagram.get("edges", []):
         key = (e.get("source"), e.get("target"), e.get("label") or e.get("data", {}).get("protocol", ""))
-        if not all(key[:2]) or key in seen: continue
+        if not all(key[:2]) or key in seen:
+            continue
         seen.add(key)
         d = e.setdefault("data", {})
-        d.setdefault("direction", "forward"); d.setdefault("kind", "sync")
-        if not e.get("label"): e["label"] = d.get("protocol") or ""
+        d.setdefault("direction", "forward")
+        d.setdefault("kind", "sync")
+        if not e.get("label"):
+            e["label"] = d.get("protocol") or ""
         cleaned.append(e)
     diagram["edges"] = cleaned
+
+    pattern = (diagram.get("pattern") or "").strip().lower()
+    valid_patterns = {"three_tier","microservices","event_driven","iam","hybrid_cloud","zero_trust","data_pipeline","generic"}
+    if pattern not in valid_patterns:
+        pattern = infer_architecture_pattern(diagram)
+    diagram["pattern"] = pattern
+    diagram["layoutStrategy"] = diagram.get("layoutStrategy") or (
+        "pattern_template" if pattern != "generic" else "hybrid"
+    )
     return diagram
 
 def generate_diagram(prompt: str, custom_icons: list = None) -> dict:

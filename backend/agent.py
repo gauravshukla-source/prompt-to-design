@@ -20,9 +20,9 @@ class NodeData(BaseModel):
     properties: Optional[List[NodeProperty]] = Field(None, description="Key-value pairs for node properties")
     layer: Optional[int] = Field(None, ge=0, le=10, description="Architecture layer for deterministic layout")
     provider: Optional[str] = Field(None, description="aws, azure, gcp, onprem, saas, generic")
-    role: Optional[str] = Field(None, description="Semantic architecture role: external_actor, identity_source, identity_provider, primary_component, target_application, traffic_router, peer_service, event_backbone, integration, data_store, cache, security_control, observability")
-    peerGroup: Optional[str] = Field(None, description="Name of a peer set that must be rendered together, never sequentially")
-    importance: Optional[str] = Field("normal", description="primary, normal, supporting")
+    role: Optional[str] = Field(None, description="Semantic role such as external_actor, identity_source, identity_provider, primary_component, target_application, event_backbone, peer_service")
+    peerGroup: Optional[str] = Field(None, description="Name of a peer set that must be laid out as peers, not a sequence")
+    importance: Optional[str] = Field("normal", description="primary, normal, or supporting")
 
 class Node(BaseModel):
     id: str
@@ -46,11 +46,13 @@ class Edge(BaseModel):
 class Group(BaseModel):
     id: str
     label: str
-    type: str = Field(..., description="Type of group boundary: 'vpc', 'subnet', 'securityGroup', 'azureResourceGroup', 'kubernetesCluster', 'generic'")
+    type: str = Field(..., description="Type of group boundary: 'vpc', 'subnet', 'securityGroup', 'azureResourceGroup', 'kubernetesCluster', 'trustZone', 'generic'")
+    parentId: Optional[str] = None
+    role: Optional[str] = Field("boundary", description="boundary or trust_zone")
 
 class DiagramSchema(BaseModel):
-    diagramType: str = Field(..., description="Type of diagram: architecture, integration, flowchart")
-    pattern: Optional[str] = Field("generic", description="iam, hub_spoke, three_tier, microservices, event_driven, data_pipeline, hybrid_cloud, zero_trust, generic")
+    diagramType: str = Field(..., description="Type of diagram: 'architecture', 'integration', 'flowchart'")
+    pattern: Optional[str] = Field(None, description="iam, event_driven, microservices, data_pipeline, hybrid_cloud, three_tier, zero_trust, or generic")
     groups: List[Group]
     nodes: List[Node]
     edges: List[Edge]
@@ -58,31 +60,20 @@ class DiagramSchema(BaseModel):
 # Base prompts
 SYSTEM_PROMPT = """
 You are a principal Enterprise Solutions Architect. Produce clean, publication-quality architecture diagram specifications inspired by AWS Architecture Center, Microsoft Azure Architecture Center, and Google Cloud reference architectures.
-The renderer owns coordinates; you own semantic architecture and MUST select the architecture pattern.
-
-ARCHITECTURE PATTERN SELECTION:
-- IAM / IGA: identity_source -> identity_provider -> primary_component (IGA hub) -> target_application peers.
-- hub_spoke: one central primary component with independent peers around it.
-- three_tier: users/edge -> traffic -> application peers -> data peers.
-- microservices: entry -> independent peer services -> optional event backbone -> data peers.
-- event_driven: producer peers -> event backbone -> consumer peers.
-- data_pipeline: source peers -> ingestion -> processing -> storage/analytics.
-- hybrid_cloud: on-prem boundary -> connectivity bridge -> cloud boundary.
-- zero_trust: user/device -> identity -> security policy -> secure access -> applications.
-
+The renderer owns coordinates; you own semantic architecture.
 CRITICAL RULES:
-1. Return pattern explicitly in the root object.
-2. Assign every node role, layer, importance and category. Use importance=primary only for the architecture hub/backbone.
-3. Use peerGroup for services, producers, consumers, target applications, and data stores that must appear as peers. Never make peers sequential unless the prompt explicitly states a dependency.
-4. Groups are real boundaries only: cloud/on-prem/SaaS domain, VPC/VNet, resource group, cluster, subnet, namespace, or trust zone. Never create empty groups.
-5. Every edge is a real directional interaction source -> target. Do not connect sibling databases or sibling applications merely because they coexist.
-6. Edge labels are short: HTTPS, REST/HTTPS, gRPC, AMQP, LDAP, JDBC, OAuth2/OIDC, SCIM, Event.
-7. Use kind=auth for authentication/identity, async for events/queues, data for data access, control for governance/control plane, sync otherwise.
-8. For IAM/IGA, make the IGA platform primary and visually central; target applications are independent peers.
-9. Generate 5-18 nodes. Summarize repeated infrastructure instead of clutter.
-10. Use architecture notation (components, boundaries, directional connectors), never a generic flowchart.
+1. First classify the architecture pattern: iam, event_driven, microservices, data_pipeline, hybrid_cloud, three_tier, zero_trust, or generic.
+2. Organize semantic architecture into logical layers; the renderer owns final coordinates and may use pattern-specific composition instead of generic left-to-right layout.
+3. Assign every node a category, layer, role, peerGroup, and importance. Keep peers in the same peerGroup and never connect peers sequentially unless the prompt explicitly requires it.
+4. For IAM/IGA: identity_source -> identity_provider -> primary_component -> target_application. Saviynt is primary_component with importance=primary; Active Directory is identity_source; Entra/Okta is identity_provider; provisioned SaaS/AWS targets are target_application peers.
+5. Use groups only for real boundaries: cloud/on-prem/SaaS domain, VPC/VNet/resource group, cluster, subnet, or trust zone.
+6. Every edge is a real directional interaction source -> target. Prefer adjacent layers and avoid decorative/duplicate edges.
+7. Edge labels are short protocol/flow labels only: HTTPS, REST/HTTPS, gRPC, AMQP, LDAP, JDBC, OAuth2/OIDC, Event.
+8. Use direction="bidirectional" only for genuine two-way relationships; use kind="async" for queues/topics/events.
+9. Generate 5-18 nodes. Summarize repeated infrastructure instead of creating clutter.
+10. Use architecture notation (components, boundaries, directional connectors), not a generic flowchart.
 11. Use ONLY approved icon slugs or supplied custom icon tags. Never invent slugs.
-
+12. Do not create empty/decorative groups.
 Approved icon slugs:
 AWS: aws-api-gateway | aws-rds | aws-ecs | aws-s3 | aws-lambda | aws-ec2 | aws-alb | aws-cloudfront
 Azure: azure-sql | azure-app-service | azure-vm | azure-api-management | azure-active-directory | azure-functions | azure-service-bus
@@ -151,7 +142,7 @@ def _generate_with_model_fallback(client: genai.Client, contents: str, config: t
     Vertex AI Gemini models in the region if a 404 NOT_FOUND occurs.
     """
     preferred_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    models_to_try = [preferred_model, "gemini-2.5-flash", "gemini-2.5-pro"]
+    models_to_try = [preferred_model, "gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro"]
     
     # De-duplicate while preserving priority order
     seen = set()
@@ -174,75 +165,93 @@ def _generate_with_model_fallback(client: genai.Client, contents: str, config: t
     raise last_error
 
 def normalize_diagram(diagram: dict) -> dict:
-    """Normalize AI output into deterministic Phase 5.2 architecture semantics."""
+    """Apply deterministic architecture semantics so rendering does not depend on model layout quality."""
+    category_layer = {
+        "external": 0, "user": 0, "edge": 1, "network": 1,
+        "compute": 2, "application": 2, "general": 2,
+        "integration": 3, "messaging": 3,
+        "data": 4, "database": 4, "storage": 4,
+        "identity": 5, "security": 5, "observability": 5,
+    }
     valid_icons = {
         "aws-api-gateway","aws-rds","aws-ecs","aws-s3","aws-lambda","aws-ec2","aws-alb","aws-cloudfront",
         "azure-sql","azure-app-service","azure-vm","azure-api-management","azure-active-directory","azure-functions","azure-service-bus",
-        "gcp-cloud-run","gcp-gcs","gcp-bigquery","gcp-pubsub","active-directory","okta","ldap","saviynt-iga","microsoft-graph",
+        "gcp-cloud-run","gcp-gcs","gcp-bigquery","gcp-pubsub","active-directory","azure-active-directory","okta","ldap","saviynt-iga","microsoft-graph",
         "kafka","rabbitmq","kubernetes","load-balancer","firewall","router","dns","database","server","client","user","cog"
     }
     custom = {i.get("tag") for i in diagram.get("custom_icons", [])}
-    text = " ".join(f"{n.get('data',{}).get('label','')} {n.get('data',{}).get('icon','')}" for n in diagram.get("nodes", [])).lower()
-    pattern = (diagram.get("pattern") or "generic").lower()
-    if pattern == "generic":
-        if any(x in text for x in ["saviynt", "identity governance", "iga"]): pattern = "iam"
-        elif any(x in text for x in ["kafka", "rabbitmq", "event bus", "pubsub"]): pattern = "event_driven"
-        elif any(x in text for x in ["kubernetes", "microservice", "ecs cluster"]): pattern = "microservices"
-        elif any(x in text for x in ["data lake", "warehouse", "ingestion", "spark"]): pattern = "data_pipeline"
-    diagram["pattern"] = pattern
 
-    def infer_role(label, icon, category):
-        t = f"{label} {icon} {category}".lower()
-        if any(x in t for x in ["saviynt", "identity governance", " iga"]): return "primary_component"
-        if any(x in t for x in ["active directory", "ldap", "identity source"]): return "identity_source"
-        if any(x in t for x in ["entra", "okta", "identity provider"]): return "identity_provider"
-        if any(x in t for x in ["user", "employee", "admin", "browser", "client"]): return "external_actor"
-        if any(x in t for x in ["servicenow", "salesforce", "workday", "aws iam", "target application"]): return "target_application"
-        if any(x in t for x in ["kafka", "rabbitmq", "pubsub", "service bus", "event bus"]): return "event_backbone"
-        if any(x in t for x in ["rds", "database", "sql", "postgres", "mongo", "dynamodb"]): return "data_store"
-        if any(x in t for x in ["redis", "cache", "elasticache"]): return "cache"
-        if any(x in t for x in ["alb", "load balancer", "api gateway", "gateway"]): return "traffic_router"
-        if any(x in t for x in ["waf", "firewall", "policy", "mfa", "security"]): return "security_control"
-        if any(x in t for x in ["monitor", "grafana", "prometheus", "logging"]): return "observability"
-        if any(x in t for x in ["integration", "connector", "direct connect", "expressroute"]): return "integration"
-        return "peer_service"
+    text = " ".join(
+        " ".join([str(n.get("data", {}).get(k, "")) for k in ("label", "category", "icon", "role")])
+        for n in diagram.get("nodes", [])
+    ).lower()
+    if not diagram.get("pattern") or diagram.get("pattern") in {"generic", "unknown"}:
+        if any(x in text for x in ("saviynt", "identity governance", "active directory", "entra", "okta", " scim")):
+            diagram["pattern"] = "iam"
+        elif any(x in text for x in ("kafka", "rabbitmq", "pubsub", "event")):
+            diagram["pattern"] = "event_driven"
+        elif any(x in text for x in ("warehouse", "etl", "ingestion", "pipeline", "transform")):
+            diagram["pattern"] = "data_pipeline"
+        else:
+            diagram["pattern"] = "generic"
 
-    role_layer = {
-        "external_actor": 0, "identity_source": 0, "edge_entry": 1, "traffic_router": 1,
-        "identity_provider": 1, "security_control": 2, "primary_component": 3,
-        "peer_service": 3, "integration": 4, "event_backbone": 4,
-        "data_store": 5, "cache": 5, "target_application": 5, "observability": 6
-    }
     for n in diagram.get("nodes", []):
         data = n.setdefault("data", {})
+        label = str(data.get("label", "")).lower()
         category = (data.get("category") or "general").lower()
         data["category"] = category
-        role = data.get("role") or infer_role(data.get("label", ""), data.get("icon", ""), category)
-        data["role"] = role
-        data["importance"] = "primary" if role in {"primary_component", "event_backbone"} else data.get("importance") or "normal"
-        data["layer"] = role_layer.get(role, data.get("layer", 3))
-        if role in {"peer_service", "target_application", "data_store", "cache"} and not data.get("peerGroup"):
-            data["peerGroup"] = role
+        data["layer"] = category_layer.get(category, data.get("layer", 2))
         if data.get("icon") not in valid_icons and data.get("icon") not in custom:
             data["icon"] = "server"
         if not data.get("provider"):
             icon = data.get("icon", "")
             data["provider"] = "aws" if icon.startswith("aws-") else "azure" if icon.startswith("azure-") else "gcp" if icon.startswith("gcp-") else "generic"
 
-    seen, cleaned = set(), []
+        # Semantic role normalization. The renderer must not have to guess these from coordinates.
+        role = str(data.get("role") or "").lower()
+        if diagram["pattern"] == "iam":
+            if "saviynt" in label:
+                role, data["importance"] = "primary_component", "primary"
+                data["peerGroup"] = ""
+            elif "active directory" in label or data.get("icon") in {"active-directory", "ldap"}:
+                role, data["peerGroup"] = "identity_source", "identity_sources"
+            elif any(x in label for x in ("entra", "okta", "identity provider", "azure active directory")):
+                role, data["peerGroup"] = "identity_provider", "identity_provider"
+            elif any(x in label for x in ("user", "employee", "admin", "browser", "client")):
+                role, data["peerGroup"] = "external_actor", "users"
+            else:
+                role, data["peerGroup"] = "target_application", "target_applications"
+        data["role"] = role or "peer_service"
+        data.setdefault("importance", "normal")
+        data.setdefault("peerGroup", "")
+
+    # Strict IAM boundary ownership: do not put SaaS targets in AWS merely because one target is AWS IAM.
+    if diagram["pattern"] == "iam":
+        node_by_id = {n.get("id"): n for n in diagram.get("nodes", [])}
+        valid_groups = []
+        for g in diagram.get("groups", []):
+            gid = g.get("id")
+            members = [n for n in diagram.get("nodes", []) if n.get("parentId") == gid]
+            providers = {n.get("data", {}).get("provider") for n in members}
+            label = str(g.get("label", "")).lower()
+            if "aws" in label and any(p not in {"aws", "generic", None} for p in providers):
+                for n in members:
+                    n["parentId"] = None
+                continue
+            valid_groups.append(g)
+        diagram["groups"] = valid_groups
+
+    seen = set(); cleaned = []
     for e in diagram.get("edges", []):
         key = (e.get("source"), e.get("target"), e.get("label") or e.get("data", {}).get("protocol", ""))
-        if not all(key[:2]) or key in seen: continue
+        if not all(key[:2]) or key in seen:
+            continue
         seen.add(key)
         d = e.setdefault("data", {})
         d.setdefault("direction", "forward")
         d.setdefault("kind", "sync")
-        protocol = (d.get("protocol") or e.get("label") or "").lower()
-        if d["kind"] == "sync":
-            if any(x in protocol for x in ["oauth", "oidc", "saml", "ldap", "scim"]): d["kind"] = "auth"
-            elif any(x in protocol for x in ["amqp", "event", "kafka", "queue", "topic", "pubsub"]): d["kind"] = "async"
-            elif any(x in protocol for x in ["jdbc", "sql"]): d["kind"] = "data"
-        if not e.get("label"): e["label"] = d.get("protocol") or ""
+        if not e.get("label"):
+            e["label"] = d.get("protocol") or ""
         cleaned.append(e)
     diagram["edges"] = cleaned
     return diagram

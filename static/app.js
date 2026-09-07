@@ -210,6 +210,9 @@ function initCanvas() {
                     'background-image': 'none'
                 }
             },
+            { selector: 'node.boundary-depth-0', style: { 'border-style': 'solid', 'border-width': '2px', 'border-color': '#64748b', 'background-color': 'rgba(148,163,184,0.025)', 'padding': '30px' } },
+            { selector: 'node.boundary-depth-1', style: { 'border-style': 'solid', 'border-width': '1.5px', 'border-color': '#475569', 'background-color': 'rgba(148,163,184,0.018)', 'padding': '26px' } },
+            { selector: 'node.boundary-depth-2', style: { 'border-style': 'dashed', 'border-width': '1px', 'border-color': '#64748b', 'background-color': 'rgba(255,255,255,0.012)', 'padding': '22px' } },
             {
                 selector: 'node[type="group"]:selected',
                 style: {
@@ -222,7 +225,7 @@ function initCanvas() {
                 selector: 'edge',
                 style: {
                     'label': 'data(label)',
-                    'font-size': '9px',
+                    'font-size': '10px',
                     'font-family': 'Inter, sans-serif',
                     'color': '#94a3b8',
                     'width': 2,
@@ -236,7 +239,7 @@ function initCanvas() {
                     'target-endpoint': 'outside-to-node-or-label',
                     'text-background-opacity': 0.85,
                     'text-background-color': '#0c0c0e',
-                    'text-background-padding': '3px',
+                    'text-background-padding': '4px',
                     'text-background-shape': 'roundrectangle'
                 }
             },
@@ -277,28 +280,193 @@ function canvasZoomOut() { cy.zoom(cy.zoom() * 0.85); }
 function canvasFit() { cy.fit(cy.elements(), 55); }
 
 const ARCH_LAYER = { external:0, user:0, dns:1, edge:1, network:1, security:2, identity:2, gateway:3, application:4, compute:4, general:4, integration:5, messaging:5, data:6, database:6, storage:6, observability:7 };
-function architectureLayer(node) { const n=Number(node.data('layer')); return Number.isFinite(n) ? n : (ARCH_LAYER[node.data('category')] ?? 4); }
-function rootBoundaryId(node) { let p=node.parent(), last=null; while(p && p.length){last=p;p=p.parent();} return last?last.id():'__root__'; }
+const LAYOUT = { xGap: 250, yGap: 118, centerY: 420, branchGap: 92, groupGap: 30, iterations: 6 };
+
+function architectureLayer(node) {
+    const n = Number(node.data('layer'));
+    return Number.isFinite(n) ? n : (ARCH_LAYER[node.data('category')] ?? 4);
+}
+function rootBoundaryId(node) {
+    let p=node.parent(), last=null;
+    while(p && p.length){ last=p; p=p.parent(); }
+    return last ? last.id() : '__root__';
+}
 function applyEdgeSemantics(edge) {
     const kind=edge.data('kind')||'sync'; const dir=edge.data('direction')||'forward';
     edge.removeClass('edge-sync edge-async edge-auth edge-data edge-control edge-monitoring edge-bidirectional');
     edge.addClass(`edge-${kind}`); if(dir==='bidirectional') edge.addClass('edge-bidirectional');
 }
+
+function edgeWeight(edge) {
+    const kind=edge.data('kind')||'sync';
+    if(kind==='sync') return 4;
+    if(kind==='auth') return 3;
+    if(kind==='data') return 2;
+    if(kind==='async') return 1.5;
+    if(kind==='monitoring') return .5;
+    return 1;
+}
+
+// Longest weighted path is used only as a visual backbone. It never changes the AI's semantics.
+function findPrimaryPath(nodes, edges) {
+    const ids = new Set(nodes.map(n=>n.id()));
+    const indeg = new Map(nodes.map(n=>[n.id(),0]));
+    const outgoing = new Map(nodes.map(n=>[n.id(),[]]));
+    edges.forEach(e=>{
+        const s=e.source().id(), t=e.target().id();
+        if(!ids.has(s)||!ids.has(t)) return;
+        // Backward and same-layer links are secondary relationships, not backbone flow.
+        if(architectureLayer(e.target()) < architectureLayer(e.source())) return;
+        indeg.set(t,(indeg.get(t)||0)+1);
+        outgoing.get(s).push(e);
+    });
+    const order=[...nodes].sort((a,b)=>architectureLayer(a)-architectureLayer(b));
+    const score=new Map(nodes.map(n=>[n.id(),0]));
+    const prev=new Map();
+    order.forEach(n=>{
+        (outgoing.get(n.id())||[]).forEach(e=>{
+            const t=e.target(), next=(score.get(n.id())||0)+edgeWeight(e)+Math.max(0,architectureLayer(t)-architectureLayer(n));
+            if(next>(score.get(t.id())||0)){ score.set(t.id(),next); prev.set(t.id(),n.id()); }
+        });
+    });
+    let end=order[0]; order.forEach(n=>{if((score.get(n.id())||0)>(score.get(end?.id())||0)) end=n;});
+    const path=[]; const seen=new Set();
+    while(end && !seen.has(end.id())){ path.unshift(end.id()); seen.add(end.id()); end=prev.has(end.id())?cy.$id(prev.get(end.id()))[0]:null; }
+    return new Set(path);
+}
+
+function barycenter(node, neighbors) {
+    const vals=neighbors.map(n=>n.position('y')).filter(Number.isFinite);
+    return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : node.position('y');
+}
+
+function minimizeCrossings(layers) {
+    // Sugiyama-style barycentric sweeps: stable order + repeated local improvement.
+    for(let pass=0; pass<LAYOUT.iterations; pass++){
+        for(let i=1;i<layers.length;i++){
+            layers[i].sort((a,b)=>{
+                const ay=barycenter(a,a.incomers('node').filter(n=>architectureLayer(n)<architectureLayer(a)));
+                const by=barycenter(b,b.incomers('node').filter(n=>architectureLayer(n)<architectureLayer(b)));
+                return ay-by || a.id().localeCompare(b.id());
+            });
+        }
+        for(let i=layers.length-2;i>=0;i--){
+            layers[i].sort((a,b)=>{
+                const ay=barycenter(a,a.outgoers('node').filter(n=>architectureLayer(n)>architectureLayer(a)));
+                const by=barycenter(b,b.outgoers('node').filter(n=>architectureLayer(n)>architectureLayer(b)));
+                return ay-by || a.id().localeCompare(b.id());
+            });
+        }
+        layers.forEach((list, li)=>list.forEach((n,i)=>n.position({x:160+li*LAYOUT.xGap,y:LAYOUT.centerY+(i-(list.length-1)/2)*LAYOUT.yGap})));
+    }
+}
+
+function placePrimaryBackbone(path, layerLists) {
+    if(!path.size) return;
+    layerLists.forEach((list,li)=>{
+        const primary=list.find(n=>path.has(n.id()));
+        if(primary) primary.position({x:160+li*LAYOUT.xGap,y:LAYOUT.centerY});
+    });
+}
+
+function compactBranches(path, layerLists) {
+    // Keep fan-out/fan-in siblings close to their relationship anchor instead of spreading them through the entire canvas.
+    layerLists.forEach((list,li)=>{
+        const primary=list.find(n=>path.has(n.id()));
+        const secondary=list.filter(n=>!path.has(n.id()));
+        secondary.sort((a,b)=>{
+            const ap=a.incomers('node').filter(n=>path.has(n.id()))[0] || a.outgoers('node').filter(n=>path.has(n.id()))[0];
+            const bp=b.incomers('node').filter(n=>path.has(n.id()))[0] || b.outgoers('node').filter(n=>path.has(n.id()))[0];
+            return (ap?.position('y')??LAYOUT.centerY)-(bp?.position('y')??LAYOUT.centerY) || a.id().localeCompare(b.id());
+        });
+        if(!secondary.length) return;
+        const anchor=primary ? primary.position('y') : LAYOUT.centerY;
+        secondary.forEach((n,i)=>{
+            const offset=(i-(secondary.length-1)/2)*LAYOUT.branchGap;
+            n.position({x:160+li*LAYOUT.xGap,y:anchor+offset});
+        });
+    });
+}
+
+function alignImmediateSiblings() {
+    cy.nodes().filter(n=>n.data('type')==='group').forEach(group=>{
+        const kids=group.children().filter(n=>n.data('type')!=='group');
+        const byLayer=new Map();
+        kids.forEach(n=>{const l=architectureLayer(n); if(!byLayer.has(l)) byLayer.set(l,[]); byLayer.get(l).push(n);});
+        byLayer.forEach(list=>{
+            if(list.length<2) return;
+            // Equal siblings form a compact column around their median rather than a long stack.
+            const median=list.map(n=>n.position('y')).sort((a,b)=>a-b)[Math.floor(list.length/2)] ?? LAYOUT.centerY;
+            list.sort((a,b)=>(a.data('label')||'').localeCompare(b.data('label')||''));
+            list.forEach((n,i)=>n.position({x:n.position('x'),y:median+(i-(list.length-1)/2)*LAYOUT.branchGap}));
+        });
+    });
+}
+
+function edgePorts(edge) {
+    const s=edge.source(), t=edge.target();
+    const dx=t.position('x')-s.position('x');
+    if(Math.abs(dx)>80) return dx>=0 ? {dir:'rightward',turn:'50%'} : {dir:'leftward',turn:'50%'};
+    return {dir:'downward',turn:'50%'};
+}
+
 function assignConnectorLanes() {
     const lanes=new Map();
-    cy.edges().forEach(e=>{ applyEdgeSemantics(e); const key=`${Math.min(architectureLayer(e.source()),architectureLayer(e.target()))}:${Math.max(architectureLayer(e.source()),architectureLayer(e.target()))}:${e.data('kind')||'sync'}`; if(!lanes.has(key))lanes.set(key,[]); lanes.get(key).push(e); });
-    lanes.forEach(edges=>edges.sort((a,b)=>a.id().localeCompare(b.id())).forEach((e,i)=>{e.data('taxi_direction',architectureLayer(e.target())>=architectureLayer(e.source())?'rightward':'leftward');e.data('taxi_turn',`${28+(i%4)*12}%`);}));
+    cy.edges().forEach(e=>{
+        applyEdgeSemantics(e);
+        const p=edgePorts(e);
+        const key=`${p.dir}:${Math.min(architectureLayer(e.source()),architectureLayer(e.target()))}:${Math.max(architectureLayer(e.source()),architectureLayer(e.target()))}`;
+        if(!lanes.has(key)) lanes.set(key,[]);
+        lanes.get(key).push(e);
+    });
+    lanes.forEach(edges=>edges.sort((a,b)=>{
+        const ay=(a.source().position('y')+a.target().position('y'))/2;
+        const by=(b.source().position('y')+b.target().position('y'))/2;
+        return ay-by || a.id().localeCompare(b.id());
+    }).forEach((e,i)=>{
+        const p=edgePorts(e), count=edges.length;
+        const lane=i-(count-1)/2;
+        e.data('taxi_direction',p.dir);
+        e.data('taxi_turn',`${Math.max(18,Math.min(82,50+lane*9))}%`);
+        e.data('lane_offset',lane);
+    }));
 }
-// Phase 4: container-aware semantic layout. Boundaries stay attached; components are placed first.
+
+function sizeNodesAndGroups() {
+    cy.nodes().filter(n=>n.data('type')!=='group').forEach(n=>{
+        const label=n.data('label')||'';
+        n.style('width',Math.max(98,Math.min(165,76+label.length*3.4)));
+        n.style('height',88);
+    });
+    cy.nodes('[type="group"]').forEach(g=>{
+        const depth=(()=>{let d=0,p=g.parent(); while(p&&p.length){d++;p=p.parent();} return d;})();
+        g.addClass(`boundary-depth-${Math.min(depth,3)}`);
+    });
+}
+
+// Phase 4.1: graph-aware enterprise layout.
+// 1) semantic layers provide the coarse direction
+// 2) longest weighted path becomes the visual backbone
+// 3) barycentric sweeps reduce crossings
+// 4) fan-in/fan-out siblings are compacted around their anchor
+// 5) connector lanes are assigned only after final node positions are known
 function canvasAutoLayout() {
-    const nodes=cy.nodes().filter(n=>n.data('type')!=='group'); if(!nodes.length)return;
-    const buckets=new Map(); nodes.forEach(n=>{const l=architectureLayer(n);if(!buckets.has(l))buckets.set(l,[]);buckets.get(l).push(n);});
-    const layers=[...buckets.keys()].sort((a,b)=>a-b), xGap=260, yGap=132, centerY=420;
-    layers.forEach((layer,li)=>{const list=buckets.get(layer).sort((a,b)=>{const ga=rootBoundaryId(a),gb=rootBoundaryId(b);return ga===gb?(a.data('label')||'').localeCompare(b.data('label')||''):ga.localeCompare(gb);});const start=centerY-((list.length-1)*yGap)/2;list.forEach((n,i)=>n.position({x:170+li*xGap,y:start+i*yGap}));});
-    // Compact siblings in the same immediate boundary without flattening nested groups.
-    cy.nodes().filter(n=>n.data('type')==='group').forEach(g=>{const kids=g.children().filter(n=>n.data('type')!=='group');const same=new Map();kids.forEach(k=>{const l=architectureLayer(k);if(!same.has(l))same.set(l,[]);same.get(l).push(k);});same.forEach(arr=>{if(arr.length>1){const x=arr.reduce((s,n)=>s+n.position('x'),0)/arr.length;const y=arr.reduce((s,n)=>s+n.position('y'),0)/arr.length;arr.forEach((n,i)=>n.position({x,y:y+(i-(arr.length-1)/2)*96}));}});});
-    nodes.forEach(n=>{const label=n.data('label')||'';n.style('width',Math.max(96,Math.min(150,74+label.length*3.2)));n.style('height',86);});
-    assignConnectorLanes(); cy.style().update(); cy.fit(cy.elements(),65);
+    const nodes=cy.nodes().filter(n=>n.data('type')!=='group').toArray();
+    if(!nodes.length) return;
+    sizeNodesAndGroups();
+    const buckets=new Map();
+    nodes.forEach(n=>{const l=architectureLayer(n); if(!buckets.has(l)) buckets.set(l,[]); buckets.get(l).push(n);});
+    const layerKeys=[...buckets.keys()].sort((a,b)=>a-b);
+    const layerLists=layerKeys.map(l=>buckets.get(l));
+    layerLists.forEach((list,li)=>list.forEach((n,i)=>n.position({x:160+li*LAYOUT.xGap,y:LAYOUT.centerY+(i-(list.length-1)/2)*LAYOUT.yGap})));
+    const primary=findPrimaryPath(nodes,cy.edges().toArray());
+    minimizeCrossings(layerLists);
+    placePrimaryBackbone(primary,layerLists);
+    compactBranches(primary,layerLists);
+    alignImmediateSiblings();
+    assignConnectorLanes();
+    cy.style().update();
+    cy.fit(cy.elements(),70);
 }
 
 // Project Logic

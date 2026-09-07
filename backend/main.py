@@ -23,7 +23,7 @@ if os.path.exists(env_path):
 import database
 import agent
 
-app = FastAPI(title="Enterprise Architecture Studio API", version="4.0.0")
+app = FastAPI(title="Enterprise Architecture Studio API", version="4.1.0")
 
 # Setup CORS
 app.add_middleware(
@@ -62,7 +62,7 @@ class DiagramSaveRequest(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "phase": "4", "engine": "Intelligent Enterprise Layout"}
+    return {"status": "ok", "phase": "4.1", "engine": "Smart Graph Layout & Connector Intelligence"}
 
 
 @app.get("/api/projects")

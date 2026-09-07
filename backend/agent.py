@@ -261,6 +261,21 @@ def normalize_diagram(diagram: dict) -> dict:
         try: d["layer"]=int(d.get("layer"))
         except Exception: d["layer"]=layer_by_role.get(role,2)
 
+    # Normalize group membership aliases before validation. Some integrations use parent_id/groupId
+    # or put node membership on the group itself; the renderer accepts a canonical parentId only.
+    for n in diagram["nodes"]:
+        d=n.setdefault("data", {})
+        parent=n.get("parentId") or n.get("parent_id") or n.get("groupId") or n.get("group_id") or n.get("parent") or d.get("parentId") or d.get("parent_id") or d.get("groupId") or d.get("group_id")
+        if isinstance(parent, dict): parent=parent.get("id")
+        n["parentId"]=parent or None
+    for g in diagram["groups"]:
+        members=g.get("members") or g.get("children") or g.get("nodeIds") or g.get("node_ids") or []
+        if isinstance(members, list):
+            for member in members:
+                mid=member if isinstance(member, str) else (member or {}).get("id")
+                for n in diagram["nodes"]:
+                    if n.get("id")==mid and not n.get("parentId"): n["parentId"]=g.get("id")
+
     ids={n.get("id") for n in diagram["nodes"]}
     # Remove empty/decorative groups and invalid parents. Keep only explicit deployment/trust boundaries.
     valid_group_types={"vpc","subnet","securityGroup","azureResourceGroup","kubernetesCluster","trustZone","generic"}

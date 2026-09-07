@@ -89,7 +89,20 @@ function resolveIconUrl(iconName){
  return getIconUri(iconName)||getIconUri('server');
 }
 
+// ARCHITECTURE RENDERER V2.2 — STABLE COMPOSITION ENGINE
+// Nodes own coordinates. Zones are derived, validated visual objects and never participate in layout.
 function nodeData(n){return n.data||{};}
+function normalizeTopology(dsl){
+ const d=structuredClone(dsl||{});d.groups=Array.isArray(d.groups)?d.groups:[];d.nodes=Array.isArray(d.nodes)?d.nodes:[];d.edges=Array.isArray(d.edges)?d.edges:[];
+ d.nodes=d.nodes.filter(n=>n&&n.id).map(n=>{n.data=n.data||{};const x=n.parentId??n.parent_id??n.groupId??n.group_id??n.parent??n.data.parentId??n.data.parent_id??n.data.groupId??n.data.group_id??null;n.parentId=typeof x==='object'?(x.id||null):x;return n;});
+ d.groups=d.groups.filter(g=>g&&g.id).map(g=>{g.label=g.label||g.name||g.id;return g;});
+ const groupIds=new Set(d.groups.map(g=>g.id));
+ // Support backends that put membership on the group instead of the node.
+ d.groups.forEach(g=>{const members=g.members||g.children||g.nodeIds||g.node_ids||[];if(Array.isArray(members))members.forEach(id=>{const n=d.nodes.find(x=>x.id===id);if(n&&!n.parentId)n.parentId=g.id;});});
+ d.nodes.forEach(n=>{if(!groupIds.has(n.parentId))n.parentId=null;});
+ const ids=new Set(d.nodes.map(n=>n.id));d.edges=d.edges.filter(e=>e&&ids.has(e.source)&&ids.has(e.target)&&e.source!==e.target).map((e,i)=>({...e,id:e.id||`edge_${i}`,data:e.data||{}}));
+ return d;
+}
 function nodeText(n){const d=nodeData(n);return `${d.label||''} ${d.description||''} ${d.category||''} ${d.provider||''} ${d.role||''} ${d.icon||''}`.toLowerCase();}
 function semanticRole(n,pattern=topology.pattern){const d=nodeData(n),t=nodeText(n); if(d.role)return d.role;
  if(/user|admin|employee|customer|external/.test(t))return'external_actor';
@@ -100,147 +113,32 @@ function semanticRole(n,pattern=topology.pattern){const d=nodeData(n),t=nodeText
  if(/load balancer|alb|router/.test(t))return'traffic_router';
  if(/kafka|rabbitmq|pubsub|event bus|service bus/.test(t))return'event_backbone';
  if(/database|rds|sql|postgres|mysql|warehouse|storage|s3|gcs/.test(t))return'data_store';
- if(/salesforce|servicenow|workday|aws iam|target|saas/.test(t))return'target_application';
- return'peer_service';}
+ if(/salesforce|servicenow|workday|aws iam|target|saas/.test(t))return'target_application';return'peer_service';}
 function importance(n){const i=nodeData(n).importance||'normal';return semanticRole(n)==='primary_component'?'primary':i;}
 function inferPattern(){let p=(topology.pattern||'generic').toLowerCase();if(p!=='generic')return p;const c=topology.nodes.map(nodeText).join(' ');if(/identity|saviynt|active directory|entra|okta|iga/.test(c))return'iam';if(/kafka|rabbitmq|pubsub|event/.test(c))return'event_driven';if(/pipeline|etl|warehouse|lakehouse|ingestion/.test(c))return'data_pipeline';if(/microservice|kubernetes|service mesh/.test(c))return'microservices';if(/on-prem|on prem|expressroute|direct connect|hybrid/.test(c))return'hybrid_cloud';if(/load balancer|web tier/.test(c)&&/database|rds|sql/.test(c))return'three_tier';return'generic';}
-function roleRank(role,pattern){
- const maps={iam:{external_actor:0,identity_source:1,identity_provider:2,primary_component:3,target_application:4,data_store:4},event_driven:{external_actor:0,edge_entry:1,peer_service:2,event_backbone:3,integration:4,data_store:5,target_application:5},data_pipeline:{external_actor:0,integration:1,peer_service:2,event_backbone:2,data_store:3,transactional_data:4,observability:5},three_tier:{external_actor:0,edge_entry:1,security_control:1,traffic_router:2,peer_service:3,primary_component:3,data_store:4},zero_trust:{external_actor:0,identity_provider:1,security_control:2,primary_component:3,target_application:4},hybrid_cloud:{external_actor:0,edge_entry:1,traffic_router:2,primary_component:3,peer_service:4,data_store:5}};
- const m=maps[pattern]||{};return m[role]??({external_actor:0,edge_entry:1,security_control:1,identity_source:1,identity_provider:2,traffic_router:2,primary_component:3,event_backbone:3,peer_service:4,integration:4,data_store:5,target_application:5}[role]??3);
-}
+function roleRank(role,pattern){const maps={iam:{external_actor:0,identity_source:1,identity_provider:2,primary_component:3,target_application:4,data_store:4},event_driven:{external_actor:0,edge_entry:1,event_backbone:2,event_producer:1,event_consumer:3,data_store:4,target_application:4},data_pipeline:{external_actor:0,integration:1,peer_service:2,event_backbone:2,data_store:3,transactional_data:4,observability:5},three_tier:{external_actor:0,edge_entry:1,security_control:1,traffic_router:2,peer_service:3,primary_component:3,data_store:4},zero_trust:{external_actor:0,identity_provider:1,security_control:2,primary_component:3,target_application:4},hybrid_cloud:{external_actor:0,edge_entry:1,traffic_router:2,primary_component:3,peer_service:4,data_store:5}};const m=maps[pattern]||{};return m[role]??({external_actor:0,edge_entry:1,entry_point:1,security_control:1,identity_source:1,identity_provider:2,traffic_router:2,primary_component:3,event_backbone:3,peer_service:4,integration:4,data_store:5,target_application:5,event_consumer:4,event_producer:2}[role]??3);}
 function orientationFor(pattern){return ['iam','data_pipeline','zero_trust'].includes(pattern)?'TB':'LR';}
-function graphRanks(nodes,edges,pattern){
- const ids=new Set(nodes.map(n=>n.id));const out=new Map(nodes.map(n=>[n.id,[]])),deg=new Map(nodes.map(n=>[n.id,0])),rank=new Map();
- nodes.forEach(n=>rank.set(n.id,Number.isFinite(nodeData(n).layer)?nodeData(n).layer:roleRank(semanticRole(n,pattern),pattern)));
- edges.forEach(e=>{if(ids.has(e.source)&&ids.has(e.target)&&e.source!==e.target){out.get(e.source).push(e.target);deg.set(e.target,deg.get(e.target)+1);}});
- const q=[...nodes.filter(n=>deg.get(n.id)===0).map(n=>n.id)],seen=new Set();
- while(q.length){const id=q.shift();if(seen.has(id))continue;seen.add(id);for(const t of out.get(id)||[]){rank.set(t,Math.max(rank.get(t)||0,(rank.get(id)||0)+1));deg.set(t,deg.get(t)-1);if(deg.get(t)<=0)q.push(t);}}
- return rank;
-}
-function orderLayers(nodes,edges,rank){
- const layers=new Map();nodes.forEach(n=>{const r=rank.get(n.id)||0;if(!layers.has(r))layers.set(r,[]);layers.get(r).push(n);});
- const order=new Map();[...layers.entries()].sort((a,b)=>a[0]-b[0]).forEach(([,a])=>a.forEach((n,i)=>order.set(n.id,i)));
- const neighbors=id=>edges.filter(e=>e.source===id||e.target===id).map(e=>e.source===id?e.target:e.source);
- for(let pass=0;pass<4;pass++){[...layers.keys()].sort((a,b)=>a-b).forEach(r=>layers.get(r).sort((a,b)=>{const avg=n=>{const x=neighbors(n.id).map(id=>order.get(id)).filter(Number.isFinite);return x.length?x.reduce((s,v)=>s+v,0)/x.length:order.get(n.id);};return avg(a)-avg(b)||String(nodeData(a).label).localeCompare(String(nodeData(b).label));}).forEach((n,i)=>order.set(n.id,i)));}
- return layers;
-}
-function sizeFor(n){
- const r=semanticRole(n),imp=importance(n);
- if(imp==='primary')return{w:230,h:136};
- if(r==='external_actor')return{w:142,h:82};
- if(r==='event_backbone')return{w:190,h:98};
- if(r==='target_application')return{w:158,h:92};
- return{w:158,h:92};
-}
-function composeLayout(){
- const nodes=topology.nodes||[],edges=topology.edges||[];
- const pattern=inferPattern();topology.pattern=pattern;
- const orientation=orientationFor(pattern);const rank=graphRanks(nodes,edges,pattern);const layers=orderLayers(nodes,edges,rank);positions=new Map();
- const ranks=[...layers.keys()].sort((a,b)=>a-b);
- const gapMain=orientation==='TB'?210:270;
- const baseCross=orientation==='TB'?205:175;
- // Use the available architecture width intelligently: peer layers expand, while
- // single-component layers remain centered and visually dominant.
- const layerSpan=a=>Math.max(0,(a.length-1)*baseCross);
- ranks.forEach((r,ri)=>{
-   const a=layers.get(r); const span=layerSpan(a);
-   const main=190+ri*gapMain;
-   a.forEach((n,i)=>{
-     const s=sizeFor(n);const cross=520-span/2+i*baseCross;
-     positions.set(n.id,orientation==='TB'?{x:cross,y:main,w:s.w,h:s.h}:{x:main,y:cross,w:s.w,h:s.h});
-   });
- });
- return {pattern,orientation};
-}
-function inferredZones(pattern){
- const nodes=topology.nodes||[],zones=[];const explicitIds=new Set();(topology.groups||[]).forEach(g=>{const ids=nodes.filter(n=>n.parentId===g.id).map(n=>n.id);if(ids.length){zones.push({id:g.id,title:g.label,type:g.type||'generic',ids,explicit:true});ids.forEach(id=>explicitIds.add(id));}});
- const free=nodes.filter(n=>!explicitIds.has(n.id));
- if(pattern==='iam'){
-  const add=(id,title,roles)=>{const ids=free.filter(n=>roles.includes(semanticRole(n,pattern))).map(n=>n.id);if(ids.length)zones.push({id,title,ids,type:'semantic'});ids.forEach(x=>explicitIds.add(x));};
-  add('zone-onprem','ON-PREMISES',['identity_source']);add('zone-identity','IDENTITY & GOVERNANCE',['identity_provider','primary_component']);add('zone-targets','TARGET SYSTEMS',['target_application']);
- }
- const providers=new Map();free.filter(n=>!explicitIds.has(n.id)).forEach(n=>{const p=nodeData(n).provider||'generic';if(['aws','azure','gcp','onprem','saas'].includes(p)){if(!providers.has(p))providers.set(p,[]);providers.get(p).push(n.id);}});
- for(const[p,ids]of providers)if(ids.length>=2)zones.push({id:`zone-${p}`,title:{aws:'AWS CLOUD',azure:'MICROSOFT AZURE',gcp:'GOOGLE CLOUD',onprem:'ON-PREMISES',saas:'SAAS APPLICATIONS'}[p]||p.toUpperCase(),ids,type:'provider'});
- return zones;
-}
-function boundsFor(ids,pad=52){
- const ps=ids.map(id=>positions.get(id)).filter(Boolean);if(!ps.length)return null;
- const x1=Math.min(...ps.map(p=>p.x-p.w/2))-pad,y1=Math.min(...ps.map(p=>p.y-p.h/2))-pad;
- const x2=Math.max(...ps.map(p=>p.x+p.w/2))+pad,y2=Math.max(...ps.map(p=>p.y+p.h/2))+pad;
- return{x:x1,y:y1,w:x2-x1,h:y2-y1};
-}
-function polishZoneBounds(zones,orientation){
- // Minimum dimensions and small separation make boundaries read as deliberate
- // architecture containers rather than boxes tightly wrapped around nodes.
- zones.forEach(z=>{
-   if(!z.bounds)return;
-   const b=z.bounds;
-   if(orientation==='TB'){
-     const minW=z.ids.length>1?Math.min(900,Math.max(460,z.ids.length*190+80)):360;
-     if(b.w<minW){b.x-= (minW-b.w)/2;b.w=minW;}
-   }else{
-     const minH=z.ids.length>1?Math.min(700,Math.max(280,z.ids.length*125+60)):230;
-     if(b.h<minH){b.y-= (minH-b.h)/2;b.h=minH;}
-   }
- });
- // Never allow semantic zones to visually overlap on the main reading axis.
- const ordered=[...zones].filter(z=>z.bounds).sort((a,b)=>orientation==='TB'?a.bounds.y-b.bounds.y:a.bounds.x-b.bounds.x);
- for(let i=1;i<ordered.length;i++){
-   const prev=ordered[i-1].bounds,cur=ordered[i].bounds;
-   if(orientation==='TB'){
-     const overlap=(prev.y+prev.h+24)-cur.y;if(overlap>0){cur.y+=overlap;ordered[i].bounds=cur;}
-   }else{
-     const overlap=(prev.x+prev.w+24)-cur.x;if(overlap>0){cur.x+=overlap;ordered[i].bounds=cur;}
-   }
- }
-}
-function contentBounds(zones=[]){
- const all=[...positions.values()];const rects=all.map(p=>({x:p.x-p.w/2,y:p.y-p.h/2,w:p.w,h:p.h}));
- zones.forEach(z=>{if(z.bounds)rects.push(z.bounds);});
- if(!rects.length)return{x:0,y:0,w:1400,h:900};
- const x1=Math.min(...rects.map(r=>r.x))-140,y1=Math.min(...rects.map(r=>r.y))-120;
- const x2=Math.max(...rects.map(r=>r.x+r.w))+140,y2=Math.max(...rects.map(r=>r.y+r.h))+120;
- return{x:x1,y:y1,w:Math.max(980,x2-x1),h:Math.max(700,y2-y1)};
-}
+function graphRanks(nodes,edges,pattern){const ids=new Set(nodes.map(n=>n.id)),out=new Map(nodes.map(n=>[n.id,[]])),deg=new Map(nodes.map(n=>[n.id,0])),rank=new Map();nodes.forEach(n=>rank.set(n.id,Number.isFinite(nodeData(n).layer)?nodeData(n).layer:roleRank(semanticRole(n,pattern),pattern)));edges.forEach(e=>{if(ids.has(e.source)&&ids.has(e.target)){out.get(e.source).push(e.target);deg.set(e.target,deg.get(e.target)+1);}});const q=nodes.filter(n=>deg.get(n.id)===0).map(n=>n.id),seen=new Set();while(q.length){const id=q.shift();if(seen.has(id))continue;seen.add(id);for(const t of out.get(id)||[]){rank.set(t,Math.max(rank.get(t)||0,(rank.get(id)||0)+1));deg.set(t,deg.get(t)-1);if(deg.get(t)<=0)q.push(t);}}return rank;}
+function orderLayers(nodes,edges,rank){const layers=new Map();nodes.forEach(n=>{const r=rank.get(n.id)||0;if(!layers.has(r))layers.set(r,[]);layers.get(r).push(n);});const order=new Map();[...layers.entries()].sort((a,b)=>a[0]-b[0]).forEach(([,a])=>a.forEach((n,i)=>order.set(n.id,i)));const neighbors=id=>edges.filter(e=>e.source===id||e.target===id).map(e=>e.source===id?e.target:e.source);for(let pass=0;pass<5;pass++){[...layers.keys()].sort((a,b)=>a-b).forEach(r=>layers.get(r).sort((a,b)=>{const avg=n=>{const x=neighbors(n.id).map(id=>order.get(id)).filter(Number.isFinite);return x.length?x.reduce((s,v)=>s+v,0)/x.length:order.get(n.id);};const pg=n=>String(nodeData(n).peerGroup||'');return pg(a).localeCompare(pg(b))||avg(a)-avg(b)||String(nodeData(a).label||a.id).localeCompare(String(nodeData(b).label||b.id));}).forEach((n,i)=>order.set(n.id,i)));}return layers;}
+function sizeFor(n){const r=semanticRole(n),imp=importance(n);if(imp==='primary')return{w:230,h:136};if(r==='external_actor')return{w:142,h:82};if(r==='event_backbone')return{w:190,h:98};return{w:158,h:92};}
+function composeLayout(){const nodes=topology.nodes||[],edges=topology.edges||[];const pattern=inferPattern();topology.pattern=pattern;const orientation=orientationFor(pattern),rank=graphRanks(nodes,edges,pattern),layers=orderLayers(nodes,edges,rank);positions=new Map();const ranks=[...layers.keys()].sort((a,b)=>a-b),mainGap=orientation==='TB'?185:245,crossGap=orientation==='TB'?190:165;const maxPeers=Math.max(1,...ranks.map(r=>layers.get(r).length));const center=orientation==='TB'?Math.max(520,120+maxPeers*crossGap/2):Math.max(380,120+maxPeers*crossGap/2);ranks.forEach((r,ri)=>{const a=layers.get(r),span=(a.length-1)*crossGap,main=150+ri*mainGap;a.forEach((n,i)=>{const s=sizeFor(n),cross=center-span/2+i*crossGap;positions.set(n.id,orientation==='TB'?{x:cross,y:main,w:s.w,h:s.h}:{x:main,y:cross,w:s.w,h:s.h});});});return{pattern,orientation};}
+function resolvedMembers(g,nodes){const ids=new Set();nodes.forEach(n=>{const d=nodeData(n),p=n.parentId??n.parent_id??n.groupId??n.group_id??n.parent??d.parentId??d.groupId;if(p===g.id)ids.add(n.id);});const listed=g.members||g.children||g.nodeIds||g.node_ids||[];if(Array.isArray(listed))listed.forEach(x=>ids.add(typeof x==='string'?x:x?.id));return[...ids].filter(id=>nodes.some(n=>n.id===id));}
+function inferredZones(pattern){const nodes=topology.nodes||[],zones=[],claimed=new Set();(topology.groups||[]).forEach(g=>{const ids=resolvedMembers(g,nodes);if(ids.length){zones.push({id:g.id,title:g.label||g.name||g.id,type:g.type||'generic',ids,explicit:true});ids.forEach(id=>claimed.add(id));}});const free=nodes.filter(n=>!claimed.has(n.id));if(pattern==='iam'){const add=(id,title,roles)=>{const ids=free.filter(n=>roles.includes(semanticRole(n,pattern))).map(n=>n.id);if(ids.length){zones.push({id,title,ids,type:'semantic'});ids.forEach(x=>claimed.add(x));}};add('zone-onprem','ON-PREMISES',['identity_source']);add('zone-identity','IDENTITY & GOVERNANCE',['identity_provider','primary_component']);add('zone-targets','TARGET SYSTEMS',['target_application']);}
+ const providers=new Map();free.filter(n=>!claimed.has(n.id)).forEach(n=>{const p=nodeData(n).provider||'generic';if(['aws','azure','gcp','onprem','saas'].includes(p)){if(!providers.has(p))providers.set(p,[]);providers.get(p).push(n.id);}});for(const[p,ids]of providers)if(ids.length>=2)zones.push({id:`zone-${p}`,title:{aws:'AWS CLOUD',azure:'MICROSOFT AZURE',gcp:'GOOGLE CLOUD',onprem:'ON-PREMISES',saas:'SAAS APPLICATIONS'}[p]||p.toUpperCase(),ids,type:'provider'});return zones;}
+function boundsFor(ids,pad=48){const ps=ids.map(id=>positions.get(id)).filter(Boolean);if(!ps.length)return null;const x1=Math.min(...ps.map(p=>p.x-p.w/2))-pad,y1=Math.min(...ps.map(p=>p.y-p.h/2))-pad-24,x2=Math.max(...ps.map(p=>p.x+p.w/2))+pad,y2=Math.max(...ps.map(p=>p.y+p.h/2))+pad;return{x:x1,y:y1,w:x2-x1,h:y2-y1};}
+function validateZones(raw){const seen=new Set();return raw.map(z=>{z.ids=[...new Set(z.ids||[])].filter(id=>positions.has(id));z.bounds=boundsFor(z.ids,z.explicit?54:48);return z;}).filter(z=>{if(!z.ids.length||!z.bounds||seen.has(z.id))return false;seen.add(z.id);const b=z.bounds;return Number.isFinite(b.x)&&Number.isFinite(b.y)&&b.w>=120&&b.h>=110;});}
+function contentBounds(zones=[]){const rects=[...positions.values()].map(p=>({x:p.x-p.w/2,y:p.y-p.h/2,w:p.w,h:p.h}));zones.forEach(z=>{if(z.bounds)rects.push(z.bounds);});if(!rects.length)return{x:0,y:0,w:1200,h:760};const x1=Math.min(...rects.map(r=>r.x))-100,y1=Math.min(...rects.map(r=>r.y))-90,x2=Math.max(...rects.map(r=>r.x+r.w))+100,y2=Math.max(...rects.map(r=>r.y+r.h))+90;return{x:x1,y:y1,w:Math.max(700,x2-x1),h:Math.max(520,y2-y1)};}
 function routeEdge(e,orientation){const a=positions.get(e.source),b=positions.get(e.target);if(!a||!b)return'';let sx,sy,tx,ty;if(orientation==='TB'){sx=a.x;sy=a.y+a.h/2;tx=b.x;ty=b.y-b.h/2;if(Math.abs(sx-tx)<8)return`M ${sx} ${sy} L ${tx} ${ty}`;const mid=(sy+ty)/2;return`M ${sx} ${sy} L ${sx} ${mid} L ${tx} ${mid} L ${tx} ${ty}`;}sx=a.x+a.w/2;sy=a.y;tx=b.x-b.w/2;ty=b.y;if(Math.abs(sy-ty)<8)return`M ${sx} ${sy} L ${tx} ${ty}`;const mid=(sx+tx)/2;return`M ${sx} ${sy} L ${mid} ${sy} L ${mid} ${ty} L ${tx} ${ty}`;}
-function edgeStyle(e){
- const k=e.data?.kind||'sync';
- return k==='auth'?{stroke:'#5b8cff',marker:'arrow-auth'}:k==='data'?{stroke:'#39c99a',marker:'arrow-data'}:k==='async'?{stroke:'#a879f7',dash:'8 6',marker:'arrow-async'}:k==='control'?{stroke:'#e7ad42',marker:'arrow-control'}:{stroke:'#8a9bb4',marker:'arrow-sync'};
-}
-function edgeLabelPoint(e,orientation,index=0,total=1){
- const a=positions.get(e.source),b=positions.get(e.target);if(!a||!b)return{x:0,y:0};
- const spread=(index-(total-1)/2)*18;
- if(orientation==='TB')return{x:(a.x+b.x)/2+spread,y:(a.y+a.h/2+b.y-b.h/2)/2-12};
- return{x:(a.x+a.w/2+b.x-b.w/2)/2+12,y:(a.y+b.y)/2+spread};
-}
-function edgeLabelMeta(){
- const groups=new Map();
- (topology.edges||[]).forEach(e=>{const k=`${e.source}|${e.target}`;if(!groups.has(e.source))groups.set(e.source,[]);groups.get(e.source).push(e);});
- const meta=new Map();groups.forEach(es=>es.forEach((e,i)=>meta.set(e.id||`${e.source}-${e.target}-${i}`,{index:i,total:es.length})));return meta;
-}
-function renderTopology(dsl){topology=structuredClone(dsl||{});topology.groups=Array.isArray(topology.groups)?topology.groups:[];topology.nodes=Array.isArray(topology.nodes)?topology.nodes:[];topology.edges=Array.isArray(topology.edges)?topology.edges:[];currentDiagramId=currentDiagramId||'';document.getElementById('empty-state')?.classList.toggle('hidden',topology.nodes.length>0);composeLayout();renderSvg();updateParentSelectOptions();}
-function renderSvg(){
- const host=document.getElementById('cy');host.innerHTML='';
- svgRoot=el('svg',{width:'100%',height:'100%',viewBox:`${viewport.x} ${viewport.y} ${viewport.w} ${viewport.h}`,preserveAspectRatio:'xMidYMid meet',style:'background:#0e0e11;touch-action:none;user-select:none'});host.appendChild(svgRoot);
- const defs=el('defs');
- [['arrow-sync','#8a9bb4'],['arrow-auth','#5b8cff'],['arrow-data','#39c99a'],['arrow-async','#a879f7'],['arrow-control','#e7ad42']].forEach(([id,color])=>{const m=el('marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto'});m.appendChild(el('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:color}));defs.appendChild(m);});
- const glow=el('filter',{id:'nodeGlow',x:'-30%',y:'-30%',width:'160%',height:'160%'});glow.appendChild(el('feGaussianBlur',{stdDeviation:5,result:'blur'}));glow.appendChild(el('feMerge'));defs.appendChild(glow);svgRoot.appendChild(defs);
- const pattern=topology.pattern||inferPattern(),orientation=orientationFor(pattern);const zones=inferredZones(pattern);
- zones.forEach(z=>z.bounds=boundsFor(z.ids,z.explicit?58:52));polishZoneBounds(zones,orientation);
- const bounds=contentBounds(zones);viewport={...bounds};svgRoot.setAttribute('viewBox',`${viewport.x} ${viewport.y} ${viewport.w} ${viewport.h}`);
- const zoneLayer=el('g');svgRoot.appendChild(zoneLayer);
- zones.forEach(z=>{if(!z.bounds)return;const b=z.bounds;const g=el('g');
-   g.appendChild(el('rect',{x:b.x,y:b.y,width:b.w,height:b.h,rx:18,fill:'#182233',opacity:.82,stroke:'#52627d','stroke-width':1.4,'stroke-dasharray':'7 5'}));
-   g.appendChild(el('rect',{x:b.x,y:b.y,width:b.w,height:42,rx:18,fill:'#202d42',opacity:.96}));
-   g.appendChild(el('rect',{x:b.x,y:b.y+24,width:b.w,height:18,fill:'#202d42',opacity:.96}));
-   const t=el('text',{x:b.x+18,y:b.y+27,fill:'#d7e2f1','font-size':12,'font-weight':700,'letter-spacing':1.2});t.textContent=z.title;g.appendChild(t);zoneLayer.appendChild(g);
- });
- const edgeLayer=el('g');svgRoot.appendChild(edgeLayer);const meta=edgeLabelMeta();
- topology.edges.forEach((e,edgeIndex)=>{const d=routeEdge(e,orientation);if(!d)return;const st=edgeStyle(e);const p=el('path',{d,fill:'none',stroke:st.stroke,'stroke-width':2.4,'marker-end':`url(#${st.marker})`,'stroke-linejoin':'round','stroke-linecap':'round'});if(st.dash)p.setAttribute('stroke-dasharray',st.dash);edgeLayer.appendChild(p);
-   const label=e.label||e.data?.protocol||'';if(label){const key=e.id||`${e.source}-${e.target}-${edgeIndex}`,m=meta.get(key)||{index:0,total:1},q=edgeLabelPoint(e,orientation,m.index,m.total),w=Math.max(58,Math.min(150,label.length*7.2+18));edgeLayer.appendChild(el('rect',{x:q.x-w/2,y:q.y-12,width:w,height:24,rx:5,fill:'#101722',opacity:.98,stroke:'#41506a','stroke-width':.8}));const tx=el('text',{x:q.x,y:q.y+4.5,fill:'#d8e2ee','font-size':10.5,'font-weight':600,'text-anchor':'middle'});tx.textContent=label.length>24?label.slice(0,23)+'…':label;edgeLayer.appendChild(tx);}
- });
- const nodeLayer=el('g');svgRoot.appendChild(nodeLayer);topology.nodes.forEach(n=>renderNode(nodeLayer,n));setupSvgInteractions();
-}
+function edgeStyle(e){const k=e.data?.kind||'sync';return k==='auth'?{stroke:'#5b8cff',marker:'arrow-auth'}:k==='data'?{stroke:'#39c99a',marker:'arrow-data'}:k==='async'?{stroke:'#a879f7',dash:'8 6',marker:'arrow-async'}:k==='control'?{stroke:'#e7ad42',marker:'arrow-control'}:{stroke:'#8a9bb4',marker:'arrow-sync'};}
+function edgeLabelPoint(e,orientation,index=0,total=1){const a=positions.get(e.source),b=positions.get(e.target);if(!a||!b)return{x:0,y:0};const spread=(index-(total-1)/2)*20;if(orientation==='TB')return{x:(a.x+b.x)/2+spread,y:(a.y+a.h/2+b.y-b.h/2)/2-14};return{x:(a.x+a.w/2+b.x-b.w/2)/2+14,y:(a.y+b.y)/2+spread};}
+function edgeLabelMeta(){const groups=new Map();(topology.edges||[]).forEach(e=>{if(!groups.has(e.source))groups.set(e.source,[]);groups.get(e.source).push(e);});const meta=new Map();groups.forEach(es=>es.forEach((e,i)=>meta.set(e.id,{index:i,total:es.length})));return meta;}
+function validateComposition(zones){const issues=[];const vals=[...positions.entries()];for(let i=0;i<vals.length;i++)for(let j=i+1;j<vals.length;j++){const a=vals[i][1],b=vals[j][1];if(Math.abs(a.x-b.x)<(a.w+b.w)/2-8&&Math.abs(a.y-b.y)<(a.h+b.h)/2-8)issues.push(`node-overlap:${vals[i][0]}:${vals[j][0]}`);}zones.forEach(z=>{const b=z.bounds;z.ids.forEach(id=>{const p=positions.get(id);if(p&&(p.x-p.w/2<b.x||p.x+p.w/2>b.x+b.w||p.y-p.h/2<b.y||p.y+p.h/2>b.y+b.h))issues.push(`zone-detached:${z.id}:${id}`);});});return{ok:!issues.length,issues};}
+function renderTopology(dsl){topology=normalizeTopology(dsl);currentDiagramId=currentDiagramId||'';document.getElementById('empty-state')?.classList.toggle('hidden',topology.nodes.length>0);composeLayout();renderSvg();updateParentSelectOptions();}
+function renderSvg(){const host=document.getElementById('cy');if(!host)return;host.innerHTML='';svgRoot=el('svg',{width:'100%',height:'100%',preserveAspectRatio:'xMidYMid meet',style:'background:#0e0e11;touch-action:none;user-select:none'});host.appendChild(svgRoot);const defs=el('defs');[['arrow-sync','#8a9bb4'],['arrow-auth','#5b8cff'],['arrow-data','#39c99a'],['arrow-async','#a879f7'],['arrow-control','#e7ad42']].forEach(([id,color])=>{const m=el('marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto'});m.appendChild(el('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:color}));defs.appendChild(m);});svgRoot.appendChild(defs);
+ const pattern=topology.pattern||inferPattern(),orientation=orientationFor(pattern);const zones=validateZones(inferredZones(pattern));const validation=validateComposition(zones);if(!validation.ok)console.warn('Architecture composition validation:',validation.issues);const bounds=contentBounds(zones);viewport={...bounds};svgRoot.setAttribute('viewBox',`${viewport.x} ${viewport.y} ${viewport.w} ${viewport.h}`);
+ const zoneLayer=el('g');svgRoot.appendChild(zoneLayer);zones.forEach(z=>{const b=z.bounds,g=el('g');g.appendChild(el('rect',{x:b.x,y:b.y,width:b.w,height:b.h,rx:16,fill:'#182233',opacity:.86,stroke:'#52627d','stroke-width':1.3,'stroke-dasharray':'6 4'}));g.appendChild(el('rect',{x:b.x,y:b.y,width:b.w,height:38,rx:16,fill:'#243247',opacity:.98}));g.appendChild(el('rect',{x:b.x,y:b.y+20,width:b.w,height:18,fill:'#243247',opacity:.98}));const t=el('text',{x:b.x+16,y:b.y+25,fill:'#d7e2f1','font-size':11.5,'font-weight':700,'letter-spacing':1});t.textContent=String(z.title||'BOUNDARY').toUpperCase();g.appendChild(t);zoneLayer.appendChild(g);});
+ const edgeLayer=el('g');svgRoot.appendChild(edgeLayer),meta=edgeLabelMeta();topology.edges.forEach((e,i)=>{const d=routeEdge(e,orientation);if(!d)return;const st=edgeStyle(e),path=el('path',{d,fill:'none',stroke:st.stroke,'stroke-width':2.2,'marker-end':`url(#${st.marker})`,'stroke-linejoin':'round','stroke-linecap':'round'});if(st.dash)path.setAttribute('stroke-dasharray',st.dash);edgeLayer.appendChild(path);const label=e.label||e.data?.protocol||'';if(label){const m=meta.get(e.id)||{index:0,total:1},q=edgeLabelPoint(e,orientation,m.index,m.total),text=String(label),w=Math.max(56,Math.min(170,text.length*7+18));edgeLayer.appendChild(el('rect',{x:q.x-w/2,y:q.y-12,width:w,height:24,rx:5,fill:'#101722',opacity:.98,stroke:'#41506a','stroke-width':.7}));const tx=el('text',{x:q.x,y:q.y+4.5,fill:'#e1e9f4','font-size':10.5,'font-weight':600,'text-anchor':'middle'});tx.textContent=text.length>26?text.slice(0,25)+'…':text;edgeLayer.appendChild(tx);}});
+ const nodeLayer=el('g');svgRoot.appendChild(nodeLayer);topology.nodes.forEach(n=>renderNode(nodeLayer,n));setupSvgInteractions();}
 function renderNode(layer,n){const p=positions.get(n.id);if(!p)return;const primary=importance(n)==='primary';const g=el('g',{class:'arch-node','data-id':n.id,cursor:'pointer',transform:`translate(${p.x-p.w/2} ${p.y-p.h/2})`});const fill=primary?'#253d75':'#182231',stroke=primary?'#79a6ff':'#52627d';g.appendChild(el('rect',{width:p.w,height:p.h,rx:14,fill,stroke,'stroke-width':primary?2.5:1.5,filter:primary?'url(#nodeGlow)':undefined}));const img=el('image',{href:resolveIconUrl(nodeData(n).icon),x:(p.w-(primary?50:44))/2,y:primary?16:13,width:primary?50:44,height:primary?50:44,preserveAspectRatio:'xMidYMid meet'});g.appendChild(img);const title=el('text',{x:p.w/2,y:primary?86:73,fill:'#f1f5f9','font-size':primary?14:11.5,'font-weight':primary?700:600,'text-anchor':'middle'});title.textContent=nodeData(n).label||n.id;g.appendChild(title);if(primary&&nodeData(n).description){const sub=el('text',{x:p.w/2,y:110,fill:'#c4d2e8','font-size':9.5,'text-anchor':'middle'});sub.textContent=String(nodeData(n).description).slice(0,34);g.appendChild(sub);}g.addEventListener('click',ev=>{ev.stopPropagation();selectedElement={type:'node',id:n.id};showNodeInspector(n);});layer.appendChild(g);}
 function setupSvgInteractions(){if(!svgRoot)return;svgRoot.onwheel=e=>{e.preventDefault();const f=e.deltaY>0?1.12:.88;viewport.w*=f;viewport.h*=f;svgRoot.setAttribute('viewBox',`${viewport.x} ${viewport.y} ${viewport.w} ${viewport.h}`);};svgRoot.onclick=()=>{selectedElement=null;hideInspectors();};}
 function rerenderKeepView(){renderSvg();}

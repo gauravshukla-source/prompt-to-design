@@ -21,15 +21,15 @@ echo ">>> Enabling required APIs..."
 gcloud services enable \
   run.googleapis.com \
   artifactregistry.googleapis.com \
-  generativelanguage.googleapis.com \
+  aiplatform.googleapis.com \
   --project=$PROJECT_ID
 
-# Grant the Cloud Run default service account the AI Platform User role
-# so it can call the Generative Language API via ADC (no API key needed).
+# Grant the Cloud Run default service account the Vertex AI User role
+# so it can access Vertex AI models via ADC (zero API keys needed).
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
 SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
-echo ">>> Granting AI Platform User role to ${SA}..."
+echo ">>> Granting Vertex AI User role to ${SA}..."
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:${SA}" \
   --role="roles/aiplatform.user" \
@@ -41,6 +41,7 @@ gcloud run deploy $SERVICE_NAME \
   --region=$REGION \
   --platform=managed \
   --allow-unauthenticated \
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCP_LOCATION=${REGION},GEMINI_MODEL=gemini-2.0-flash" \
   --project=$PROJECT_ID
 
 echo ""

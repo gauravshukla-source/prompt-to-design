@@ -92,20 +92,25 @@ def get_diagram(diagram_id: str):
     diag_dict["topology_json"] = json.loads(diag_dict["topology_json"])
     return diag_dict
 
+@app.get("/api/auth/status")
+def get_auth_status():
+    """Returns ADC / Vertex AI connectivity status for UI monitoring."""
+    return agent.check_auth_status()
+
 @app.post("/api/generate")
-def generate_diagram(req: GenerateRequest, x_gemini_key: Optional[str] = Header(None)):
+def generate_diagram(req: GenerateRequest):
     custom_icons = database.get_custom_icons()
     try:
-        diagram_data = agent.generate_diagram(req.prompt, custom_icons, x_gemini_key)
+        diagram_data = agent.generate_diagram(req.prompt, custom_icons)
         return diagram_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/refine")
-def refine_diagram(req: RefineRequest, x_gemini_key: Optional[str] = Header(None)):
+def refine_diagram(req: RefineRequest):
     custom_icons = database.get_custom_icons()
     try:
-        refined_data = agent.refine_diagram(req.prompt, req.current_diagram, custom_icons, x_gemini_key)
+        refined_data = agent.refine_diagram(req.prompt, req.current_diagram, custom_icons)
         return refined_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

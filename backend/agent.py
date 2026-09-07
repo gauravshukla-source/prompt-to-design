@@ -68,40 +68,59 @@ Output format:
 Return a JSON object that strictly adheres to the requested DiagramSchema.
 """
 
-def get_gemini_client(api_key: str = None) -> genai.Client:
+def check_auth_status() -> dict:
     """
-    Authentication priority:
-    1. Always try Application Default Credentials (ADC) first.
-       - On Cloud Run: the metadata server provides a token automatically.
-       - Locally with gcloud auth: uses your gcloud credentials.
-    2. Fallback: GEMINI_API_KEY from the request header or .env file.
+    Checks the status of Application Default Credentials (ADC) and Vertex AI configuration.
+    Returns diagnostic details for monitoring and UI badge display.
     """
-    # Priority 1: ADC — works automatically on Cloud Run, Compute Engine,
-    # and locally when 'gcloud auth application-default login' has been run.
+    gcp_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_PROJECT_ID", "architecture-diagram-500204")
+    gcp_location = os.environ.get("GCP_LOCATION", "us-central1")
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+
     try:
-        credentials, _ = google.auth.default(
-            scopes=["https://www.googleapis.com/auth/generative-language"]
+        creds, proj = google.auth.default()
+        resolved_project = proj or gcp_project
+        return {
+            "authenticated": True,
+            "auth_mode": "Vertex AI (ADC)",
+            "project": resolved_project,
+            "location": gcp_location,
+            "model": model,
+            "message": "Connected via Application Default Credentials (ADC)"
+        }
+    except Exception as e:
+        return {
+            "authenticated": False,
+            "auth_mode": "Vertex AI (ADC)",
+            "project": gcp_project,
+            "location": gcp_location,
+            "model": model,
+            "message": f"ADC not detected: {e}"
+        }
+
+def get_gemini_client() -> genai.Client:
+    """
+    Initializes Google GenAI client in Vertex AI mode with Application Default Credentials (ADC).
+    Strictly complies with enterprise security policies: zero API keys are accepted or stored.
+    """
+    gcp_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_PROJECT_ID", "architecture-diagram-500204")
+    gcp_location = os.environ.get("GCP_LOCATION", "us-central1")
+
+    try:
+        # Vertex AI uses ADC (OAuth2) automatically without API keys
+        return genai.Client(vertexai=True, project=gcp_project, location=gcp_location)
+    except Exception as e:
+        raise RuntimeError(
+            f"Vertex AI (ADC) initialization failed: {e}. "
+            f"Enterprise policy disallows API keys. Please ensure Application Default Credentials (ADC) "
+            f"are configured locally via 'gcloud auth application-default login', or that the service account "
+            f"is assigned when running on Cloud Run."
         )
-        # Pass credentials directly — avoids sending any api_key at all
-        return genai.Client(credentials=credentials)
-    except Exception:
-        # ADC not available (e.g. plain local dev without gcloud login)
-        pass
 
-    # Priority 2: API key from request header or .env
-    key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if key:
-        return genai.Client(api_key=key.strip())
+def generate_diagram(prompt: str, custom_icons: list = None) -> dict:
+    client = get_gemini_client()
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
-    raise ValueError(
-        "Authentication missing. On Cloud Run, ensure the service account has the "
-        "'AI Platform User' role and that 'Generative Language API' is enabled. "
-        "For local development, set GEMINI_API_KEY in your .env file."
-    )
-
-def generate_diagram(prompt: str, custom_icons: list = None, api_key: str = None) -> dict:
-    client = get_gemini_client(api_key)
-    
     custom_context_str = ""
     if custom_icons:
         custom_context_str = "\nYou also have access to the following custom-uploaded organization-specific icon tags:\n"
@@ -116,16 +135,17 @@ def generate_diagram(prompt: str, custom_icons: list = None, api_key: str = None
     )
 
     response = client.models.generate_content(
-        model="gemini-3.1-flash-lite",
+        model=model,
         contents=f"Generate a diagram for the following prompt:\n{prompt}",
         config=config
     )
 
     return json.loads(response.text)
 
-def refine_diagram(prompt: str, current_diagram: dict, custom_icons: list = None, api_key: str = None) -> dict:
-    client = get_gemini_client(api_key)
-    
+def refine_diagram(prompt: str, current_diagram: dict, custom_icons: list = None) -> dict:
+    client = get_gemini_client()
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+
     custom_context_str = ""
     if custom_icons:
         custom_context_str = "\nAvailable custom icon tags:\n" + "\n".join([f"- Tag: '{i['tag']}', Desc: {i['description']}" for i in custom_icons])
@@ -148,7 +168,7 @@ Current Diagram State:
     )
 
     response = client.models.generate_content(
-        model="gemini-3.1-flash-lite",
+        model=model,
         contents=f"Apply the following modifications: {prompt}",
         config=config
     )

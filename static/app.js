@@ -54,7 +54,7 @@ let customIcons = [];
 document.addEventListener("DOMContentLoaded", () => {
     lucide.createIcons();
     initTabs();
-    initAPIKey();
+    initAuthStatus();
     initCanvas();
     loadProjects();
     loadCustomIcons();
@@ -112,20 +112,30 @@ function initTabs() {
     });
 }
 
-// API Key management
-function initAPIKey() {
-    const keyInput = document.getElementById("gemini-key");
-    const savedKey = localStorage.getItem("gemini_api_key");
-    if (savedKey) {
-        keyInput.value = savedKey;
-    }
-    keyInput.addEventListener("input", (e) => {
-        localStorage.setItem("gemini_api_key", e.target.value.trim());
-    });
-}
+// Authentication & ADC status management
+async function initAuthStatus() {
+    const dot = document.getElementById("auth-status-dot");
+    const text = document.getElementById("auth-status-text");
+    if (!dot || !text) return;
 
-function getAPIKey() {
-    return localStorage.getItem("gemini_api_key") || "";
+    try {
+        const res = await fetch("/api/auth/status");
+        if (res.ok) {
+            const data = await res.json();
+            if (data.authenticated) {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                text.innerText = `Vertex AI (${data.location})`;
+                text.title = `Project: ${data.project} | Mode: ${data.auth_mode}`;
+            } else {
+                dot.className = "w-2 h-2 rounded-full bg-amber-400";
+                text.innerText = "ADC Pending";
+                text.title = data.message;
+            }
+        }
+    } catch (e) {
+        dot.className = "w-2 h-2 rounded-full bg-rose-400";
+        text.innerText = "Auth Error";
+    }
 }
 
 // Initialize Cytoscape canvas
@@ -576,8 +586,6 @@ btnGen.addEventListener("click", async () => {
     const prompt = promptInput.value.trim();
     if (!prompt) return;
     
-    const key = getAPIKey(); // optional: passed if user set one manually
-    
     loader.classList.remove("hidden");
     
     const isNew = cy.elements().length === 0;
@@ -589,11 +597,9 @@ btnGen.addEventListener("click", async () => {
     promptInput.value = "";
     
     try {
-        const headers = { "Content-Type": "application/json" };
-        if (key) headers["X-Gemini-Key"] = key; // only send if user has set one
         const res = await fetch(url, {
             method: "POST",
-            headers,
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
         

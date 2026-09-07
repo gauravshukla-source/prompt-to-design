@@ -210,9 +210,6 @@ function initCanvas() {
                     'background-image': 'none'
                 }
             },
-            { selector: 'node.boundary-depth-0', style: { 'border-style': 'solid', 'border-width': '2px', 'border-color': '#64748b', 'background-color': 'rgba(148,163,184,0.025)', 'padding': '30px' } },
-            { selector: 'node.boundary-depth-1', style: { 'border-style': 'solid', 'border-width': '1.5px', 'border-color': '#475569', 'background-color': 'rgba(148,163,184,0.018)', 'padding': '26px' } },
-            { selector: 'node.boundary-depth-2', style: { 'border-style': 'dashed', 'border-width': '1px', 'border-color': '#64748b', 'background-color': 'rgba(255,255,255,0.012)', 'padding': '22px' } },
             {
                 selector: 'node[type="group"]:selected',
                 style: {
@@ -225,7 +222,7 @@ function initCanvas() {
                 selector: 'edge',
                 style: {
                     'label': 'data(label)',
-                    'font-size': '10px',
+                    'font-size': '9px',
                     'font-family': 'Inter, sans-serif',
                     'color': '#94a3b8',
                     'width': 2,
@@ -233,21 +230,63 @@ function initCanvas() {
                     'target-arrow-color': '#4a4a4c',
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'taxi',
-                    'taxi-direction': 'data(taxi_direction)',
-                    'taxi-turn': 'data(taxi_turn)',
+                    'taxi-direction': 'rightward',
+                    'taxi-turn': '35%',
                     'source-endpoint': 'outside-to-node-or-label',
                     'target-endpoint': 'outside-to-node-or-label',
                     'text-background-opacity': 0.85,
                     'text-background-color': '#0c0c0e',
-                    'text-background-padding': '4px',
+                    'text-background-padding': '3px',
                     'text-background-shape': 'roundrectangle'
                 }
             },
-            { selector: 'edge.edge-async', style: { 'line-style': 'dashed', 'line-color': '#a78bfa', 'target-arrow-color': '#a78bfa' } },
-            { selector: 'edge.edge-auth', style: { 'line-color': '#22c55e', 'target-arrow-color': '#22c55e', 'width': 2.5 } },
-            { selector: 'edge.edge-data', style: { 'line-color': '#38bdf8', 'target-arrow-color': '#38bdf8' } },
-            { selector: 'edge.edge-monitoring', style: { 'line-style': 'dotted', 'line-color': '#f59e0b', 'target-arrow-color': '#f59e0b' } },
-            { selector: 'edge.edge-bidirectional', style: { 'source-arrow-shape': 'triangle', 'source-arrow-color': 'data(target-arrow-color)' } },
+
+            {
+                selector: 'node[type="group"].boundary-cloud',
+                style: {
+                    'border-style': 'solid',
+                    'border-width': '2px',
+                    'border-color': '#64748b',
+                    'background-color': 'rgba(148,163,184,0.06)',
+                    'padding': '48px'
+                }
+            },
+            {
+                selector: 'node[type="group"].boundary-container',
+                style: {
+                    'border-style': 'solid',
+                    'border-width': '1.5px',
+                    'border-color': '#475569',
+                    'background-color': 'rgba(71,85,105,0.04)',
+                    'padding': '36px'
+                }
+            },
+            {
+                selector: 'node[type="group"].boundary-subtle',
+                style: {
+                    'border-style': 'dashed',
+                    'border-width': '1px',
+                    'border-color': '#64748b',
+                    'background-color': 'rgba(255,255,255,0.015)',
+                    'padding': '24px'
+                }
+            },
+            {
+                selector: 'edge.edge-async',
+                style: { 'line-style': 'dashed' }
+            },
+            {
+                selector: 'edge.edge-auth',
+                style: { 'line-color': '#60a5fa', 'target-arrow-color': '#60a5fa' }
+            },
+            {
+                selector: 'edge.edge-data',
+                style: { 'line-color': '#22c55e', 'target-arrow-color': '#22c55e' }
+            },
+            {
+                selector: 'edge.edge-monitor',
+                style: { 'line-style': 'dotted', 'opacity': 0.75 }
+            },
             {
                 selector: 'edge:selected',
                 style: {
@@ -275,199 +314,191 @@ function initCanvas() {
 }
 
 // Canvas Helpers
-function canvasZoomIn() { cy.zoom(cy.zoom() * 1.15); }
-function canvasZoomOut() { cy.zoom(cy.zoom() * 0.85); }
-function canvasFit() { cy.fit(cy.elements(), 55); }
-
-const ARCH_LAYER = { external:0, user:0, dns:1, edge:1, network:1, security:2, identity:2, gateway:3, application:4, compute:4, general:4, integration:5, messaging:5, data:6, database:6, storage:6, observability:7 };
-const LAYOUT = { xGap: 250, yGap: 118, centerY: 420, branchGap: 92, groupGap: 30, iterations: 6 };
-
-function architectureLayer(node) {
-    const n = Number(node.data('layer'));
-    return Number.isFinite(n) ? n : (ARCH_LAYER[node.data('category')] ?? 4);
-}
-function rootBoundaryId(node) {
-    let p=node.parent(), last=null;
-    while(p && p.length){ last=p; p=p.parent(); }
-    return last ? last.id() : '__root__';
-}
-function applyEdgeSemantics(edge) {
-    const kind=edge.data('kind')||'sync'; const dir=edge.data('direction')||'forward';
-    edge.removeClass('edge-sync edge-async edge-auth edge-data edge-control edge-monitoring edge-bidirectional');
-    edge.addClass(`edge-${kind}`); if(dir==='bidirectional') edge.addClass('edge-bidirectional');
-}
-
-function edgeWeight(edge) {
-    const kind=edge.data('kind')||'sync';
-    if(kind==='sync') return 4;
-    if(kind==='auth') return 3;
-    if(kind==='data') return 2;
-    if(kind==='async') return 1.5;
-    if(kind==='monitoring') return .5;
-    return 1;
-}
-
-// Longest weighted path is used only as a visual backbone. It never changes the AI's semantics.
-function findPrimaryPath(nodes, edges) {
-    const ids = new Set(nodes.map(n=>n.id()));
-    const indeg = new Map(nodes.map(n=>[n.id(),0]));
-    const outgoing = new Map(nodes.map(n=>[n.id(),[]]));
-    edges.forEach(e=>{
-        const s=e.source().id(), t=e.target().id();
-        if(!ids.has(s)||!ids.has(t)) return;
-        // Backward and same-layer links are secondary relationships, not backbone flow.
-        if(architectureLayer(e.target()) < architectureLayer(e.source())) return;
-        indeg.set(t,(indeg.get(t)||0)+1);
-        outgoing.get(s).push(e);
-    });
-    const order=[...nodes].sort((a,b)=>architectureLayer(a)-architectureLayer(b));
-    const score=new Map(nodes.map(n=>[n.id(),0]));
-    const prev=new Map();
-    order.forEach(n=>{
-        (outgoing.get(n.id())||[]).forEach(e=>{
-            const t=e.target(), next=(score.get(n.id())||0)+edgeWeight(e)+Math.max(0,architectureLayer(t)-architectureLayer(n));
-            if(next>(score.get(t.id())||0)){ score.set(t.id(),next); prev.set(t.id(),n.id()); }
-        });
-    });
-    let end=order[0]; order.forEach(n=>{if((score.get(n.id())||0)>(score.get(end?.id())||0)) end=n;});
-    const path=[]; const seen=new Set();
-    while(end && !seen.has(end.id())){ path.unshift(end.id()); seen.add(end.id()); end=prev.has(end.id())?cy.$id(prev.get(end.id()))[0]:null; }
-    return new Set(path);
-}
-
-function barycenter(node, neighbors) {
-    const vals=neighbors.map(n=>n.position('y')).filter(Number.isFinite);
-    return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : node.position('y');
-}
-
-function minimizeCrossings(layers) {
-    // Sugiyama-style barycentric sweeps: stable order + repeated local improvement.
-    for(let pass=0; pass<LAYOUT.iterations; pass++){
-        for(let i=1;i<layers.length;i++){
-            layers[i].sort((a,b)=>{
-                const ay=barycenter(a,a.incomers('node').filter(n=>architectureLayer(n)<architectureLayer(a)));
-                const by=barycenter(b,b.incomers('node').filter(n=>architectureLayer(n)<architectureLayer(b)));
-                return ay-by || a.id().localeCompare(b.id());
-            });
-        }
-        for(let i=layers.length-2;i>=0;i--){
-            layers[i].sort((a,b)=>{
-                const ay=barycenter(a,a.outgoers('node').filter(n=>architectureLayer(n)>architectureLayer(a)));
-                const by=barycenter(b,b.outgoers('node').filter(n=>architectureLayer(n)>architectureLayer(b)));
-                return ay-by || a.id().localeCompare(b.id());
-            });
-        }
-        layers.forEach((list, li)=>list.forEach((n,i)=>n.position({x:160+li*LAYOUT.xGap,y:LAYOUT.centerY+(i-(list.length-1)/2)*LAYOUT.yGap})));
-    }
-}
-
-function placePrimaryBackbone(path, layerLists) {
-    if(!path.size) return;
-    layerLists.forEach((list,li)=>{
-        const primary=list.find(n=>path.has(n.id()));
-        if(primary) primary.position({x:160+li*LAYOUT.xGap,y:LAYOUT.centerY});
-    });
-}
-
-function compactBranches(path, layerLists) {
-    // Keep fan-out/fan-in siblings close to their relationship anchor instead of spreading them through the entire canvas.
-    layerLists.forEach((list,li)=>{
-        const primary=list.find(n=>path.has(n.id()));
-        const secondary=list.filter(n=>!path.has(n.id()));
-        secondary.sort((a,b)=>{
-            const ap=a.incomers('node').filter(n=>path.has(n.id()))[0] || a.outgoers('node').filter(n=>path.has(n.id()))[0];
-            const bp=b.incomers('node').filter(n=>path.has(n.id()))[0] || b.outgoers('node').filter(n=>path.has(n.id()))[0];
-            return (ap?.position('y')??LAYOUT.centerY)-(bp?.position('y')??LAYOUT.centerY) || a.id().localeCompare(b.id());
-        });
-        if(!secondary.length) return;
-        const anchor=primary ? primary.position('y') : LAYOUT.centerY;
-        secondary.forEach((n,i)=>{
-            const offset=(i-(secondary.length-1)/2)*LAYOUT.branchGap;
-            n.position({x:160+li*LAYOUT.xGap,y:anchor+offset});
-        });
-    });
-}
-
-function alignImmediateSiblings() {
-    cy.nodes().filter(n=>n.data('type')==='group').forEach(group=>{
-        const kids=group.children().filter(n=>n.data('type')!=='group');
-        const byLayer=new Map();
-        kids.forEach(n=>{const l=architectureLayer(n); if(!byLayer.has(l)) byLayer.set(l,[]); byLayer.get(l).push(n);});
-        byLayer.forEach(list=>{
-            if(list.length<2) return;
-            // Equal siblings form a compact column around their median rather than a long stack.
-            const median=list.map(n=>n.position('y')).sort((a,b)=>a-b)[Math.floor(list.length/2)] ?? LAYOUT.centerY;
-            list.sort((a,b)=>(a.data('label')||'').localeCompare(b.data('label')||''));
-            list.forEach((n,i)=>n.position({x:n.position('x'),y:median+(i-(list.length-1)/2)*LAYOUT.branchGap}));
-        });
-    });
-}
-
-function edgePorts(edge) {
-    const s=edge.source(), t=edge.target();
-    const dx=t.position('x')-s.position('x');
-    if(Math.abs(dx)>80) return dx>=0 ? {dir:'rightward',turn:'50%'} : {dir:'leftward',turn:'50%'};
-    return {dir:'downward',turn:'50%'};
-}
-
-function assignConnectorLanes() {
-    const lanes=new Map();
-    cy.edges().forEach(e=>{
-        applyEdgeSemantics(e);
-        const p=edgePorts(e);
-        const key=`${p.dir}:${Math.min(architectureLayer(e.source()),architectureLayer(e.target()))}:${Math.max(architectureLayer(e.source()),architectureLayer(e.target()))}`;
-        if(!lanes.has(key)) lanes.set(key,[]);
-        lanes.get(key).push(e);
-    });
-    lanes.forEach(edges=>edges.sort((a,b)=>{
-        const ay=(a.source().position('y')+a.target().position('y'))/2;
-        const by=(b.source().position('y')+b.target().position('y'))/2;
-        return ay-by || a.id().localeCompare(b.id());
-    }).forEach((e,i)=>{
-        const p=edgePorts(e), count=edges.length;
-        const lane=i-(count-1)/2;
-        e.data('taxi_direction',p.dir);
-        e.data('taxi_turn',`${Math.max(18,Math.min(82,50+lane*9))}%`);
-        e.data('lane_offset',lane);
-    }));
-}
-
-function sizeNodesAndGroups() {
-    cy.nodes().filter(n=>n.data('type')!=='group').forEach(n=>{
-        const label=n.data('label')||'';
-        n.style('width',Math.max(98,Math.min(165,76+label.length*3.4)));
-        n.style('height',88);
-    });
-    cy.nodes('[type="group"]').forEach(g=>{
-        const depth=(()=>{let d=0,p=g.parent(); while(p&&p.length){d++;p=p.parent();} return d;})();
-        g.addClass(`boundary-depth-${Math.min(depth,3)}`);
-    });
-}
-
-// Phase 4.1: graph-aware enterprise layout.
-// 1) semantic layers provide the coarse direction
-// 2) longest weighted path becomes the visual backbone
-// 3) barycentric sweeps reduce crossings
-// 4) fan-in/fan-out siblings are compacted around their anchor
-// 5) connector lanes are assigned only after final node positions are known
+function canvasZoomIn() { cy.zoom(cy.zoom() * 1.2); }
+function canvasZoomOut() { cy.zoom(cy.zoom() * 0.8); }
+function canvasFit() { cy.fit(); }
+// Phase 4.2 — Architecture-First Layout Engine
+// Regions first, sibling grids second, connectors last.
+// This deliberately avoids global graph ranking so architecture diagrams do not collapse into flowcharts.
 function canvasAutoLayout() {
-    const nodes=cy.nodes().filter(n=>n.data('type')!=='group').toArray();
-    if(!nodes.length) return;
-    sizeNodesAndGroups();
-    const buckets=new Map();
-    nodes.forEach(n=>{const l=architectureLayer(n); if(!buckets.has(l)) buckets.set(l,[]); buckets.get(l).push(n);});
-    const layerKeys=[...buckets.keys()].sort((a,b)=>a-b);
-    const layerLists=layerKeys.map(l=>buckets.get(l));
-    layerLists.forEach((list,li)=>list.forEach((n,i)=>n.position({x:160+li*LAYOUT.xGap,y:LAYOUT.centerY+(i-(list.length-1)/2)*LAYOUT.yGap})));
-    const primary=findPrimaryPath(nodes,cy.edges().toArray());
-    minimizeCrossings(layerLists);
-    placePrimaryBackbone(primary,layerLists);
-    compactBranches(primary,layerLists);
-    alignImmediateSiblings();
-    assignConnectorLanes();
-    cy.style().update();
-    cy.fit(cy.elements(),70);
+    if (!cy) return;
+
+    const allNodes = cy.nodes();
+    const groups = allNodes.filter(n => n.data('type') === 'group');
+    const nodes = allNodes.filter(n => n.data('type') !== 'group');
+
+    // Remove decorative/empty boundaries. Empty boxes add noise and distort compound sizing.
+    groups.forEach(g => {
+        const hasDirectChild = allNodes.some(n => n.data('parent') === g.id());
+        if (!hasDirectChild) cy.remove(g);
+    });
+
+    const regionByCategory = {
+        external: 0, user: 0, client: 0,
+        edge: 1, network: 1, dns: 1,
+        security: 2, identity: 2,
+        compute: 3, application: 3, general: 3,
+        integration: 4, messaging: 4,
+        data: 5, database: 5, storage: 5,
+        observability: 6, monitoring: 6
+    };
+
+    const regionNames = ['External', 'Edge', 'Security', 'Application', 'Integration', 'Data', 'Operations'];
+    const xGap = 245;
+    const yGap = 125;
+    const startX = 120;
+    const centerY = 430;
+
+    // Temporarily detach nodes so compound containment does not constrain coordinates.
+    nodes.forEach(n => n.move({ parent: null }));
+
+    // Build region buckets and preserve explicit architecture semantics when supplied by AI.
+    const buckets = new Map();
+    nodes.forEach(n => {
+        const category = String(n.data('category') || '').toLowerCase();
+        const explicit = Number(n.data('layer'));
+        const region = Number.isFinite(explicit)
+            ? Math.max(0, Math.min(6, explicit))
+            : (regionByCategory[category] ?? 3);
+        if (!buckets.has(region)) buckets.set(region, []);
+        buckets.get(region).push(n);
+    });
+
+    // Keep connected services close together. Nodes sharing a parent are a visual unit.
+    function parentKey(n) { return n.data('parent') || `__${n.id()}`; }
+
+    [...buckets.keys()].sort((a,b) => a-b).forEach(region => {
+        const list = buckets.get(region);
+        const clusters = new Map();
+        list.forEach(n => {
+            const key = parentKey(n);
+            if (!clusters.has(key)) clusters.set(key, []);
+            clusters.get(key).push(n);
+        });
+
+        const clusterList = [...clusters.values()]
+            .sort((a,b) => b.length - a.length || a[0].data('label').localeCompare(b[0].data('label')));
+
+        const placements = [];
+        clusterList.forEach(cluster => {
+            cluster.sort((a,b) => a.data('label').localeCompare(b.data('label')));
+            if (cluster.length <= 4) {
+                // Siblings/services/resources are horizontal, never implicitly sequential.
+                const localGap = 110;
+                const offset = -((cluster.length - 1) * localGap) / 2;
+                cluster.forEach((n, i) => placements.push({
+                    n, y: centerY + offset + i * localGap, cluster: cluster[0].id()
+                }));
+            } else {
+                // Dense service groups use a compact 2-column grid.
+                const cols = 2;
+                const rows = Math.ceil(cluster.length / cols);
+                cluster.forEach((n, i) => {
+                    const row = Math.floor(i / cols);
+                    const col = i % cols;
+                    placements.push({
+                        n,
+                        y: centerY + (row - (rows - 1)/2) * 92 + (col ? 30 : -30),
+                        cluster: cluster[0].id()
+                    });
+                });
+            }
+        });
+
+        // Spread independent clusters vertically, but keep each cluster compact.
+        const x = startX + region * xGap;
+        const count = placements.length;
+        const compactGap = count <= 4 ? yGap : 96;
+        placements.sort((a,b) => a.y - b.y).forEach((p, i) => {
+            const y = count === 1
+                ? centerY
+                : centerY - ((count - 1) * compactGap)/2 + i * compactGap;
+            p.n.position({ x, y });
+        });
+    });
+
+    // Architecture-specific sibling correction:
+    // compute/application children fan horizontally around the same application region.
+    const logicalParents = new Map();
+    nodes.forEach(n => {
+        const originalParent = n.data('parent');
+        if (originalParent) {
+            if (!logicalParents.has(originalParent)) logicalParents.set(originalParent, []);
+            logicalParents.get(originalParent).push(n);
+        }
+    });
+
+    logicalParents.forEach(children => {
+        if (children.length < 2 || children.length > 6) return;
+        const categories = new Set(children.map(n => String(n.data('category') || '').toLowerCase()));
+        const appLike = [...categories].some(c => ['compute','application','data','database','storage'].includes(c));
+        if (!appLike) return;
+
+        const avgX = children.reduce((s,n) => s + n.position('x'), 0) / children.length;
+        const avgY = children.reduce((s,n) => s + n.position('y'), 0) / children.length;
+        const horizontalGap = Math.min(150, 90 + children.length * 8);
+        children.sort((a,b) => a.data('label').localeCompare(b.data('label'))).forEach((n,i) => {
+            n.position({
+                x: avgX + (i - (children.length - 1)/2) * horizontalGap,
+                y: avgY
+            });
+        });
+    });
+
+    // Rebuild compound hierarchy deepest-first.
+    function depth(g) {
+        let d = 0, p = g.data('parent');
+        const seen = new Set();
+        while (p && !seen.has(p)) {
+            seen.add(p); d++;
+            const pg = cy.getElementById(p);
+            p = pg && pg.length ? pg.data('parent') : null;
+        }
+        return d;
+    }
+
+    const liveGroups = cy.nodes().filter(n => n.data('type') === 'group');
+    liveGroups.forEach(g => {
+        g.data('groupDepth', depth(g));
+        g.removeClass('boundary-cloud boundary-container boundary-subtle');
+        const d = g.data('groupDepth');
+        if (d === 0) g.addClass('boundary-cloud');
+        else if (d === 1) g.addClass('boundary-container');
+        else g.addClass('boundary-subtle');
+    });
+
+    [...logicalParents.entries()]
+        .sort((a,b) => depth(cy.getElementById(b[0])) - depth(cy.getElementById(a[0])))
+        .forEach(([parentId, children]) => {
+            const parent = cy.getElementById(parentId);
+            if (parent && parent.length) children.forEach(n => n.move({ parent: parentId }));
+        });
+
+    // Semantic edge styles and connector policy.
+    cy.edges().forEach(e => {
+        const raw = `${e.data('label') || ''} ${e.data('protocol') || ''}`.toLowerCase();
+        e.removeClass('edge-async edge-auth edge-data edge-monitor edge-primary');
+        if (/kafka|event|queue|amqp|async|pubsub|message/.test(raw)) e.addClass('edge-async');
+        else if (/oauth|oidc|saml|ldap|scim|auth/.test(raw)) e.addClass('edge-auth');
+        else if (/sql|jdbc|database|replication|data/.test(raw)) e.addClass('edge-data');
+        else if (/metric|log|trace|monitor/.test(raw)) e.addClass('edge-monitor');
+        else e.addClass('edge-primary');
+    });
+
+    // Prefer orthogonal routes with a consistent horizontal architecture direction.
+    cy.edges().style({
+        'curve-style': 'taxi',
+        'taxi-direction': 'rightward',
+        'taxi-turn': '42%',
+        'taxi-turn-min-distance': 18
+    }).update();
+
+    // Landscape framing and canvas utilization.
+    cy.fit(cy.elements(), 75);
+    const z = cy.zoom();
+    cy.zoom(Math.min(z * 1.08, 1.25));
 }
+
 
 // Project Logic
 async function loadProjects() {
@@ -593,9 +624,7 @@ function renderTopology(dsl) {
                     id: g.id,
                     label: g.label,
                     type: 'group',
-                    group_type: g.type,
-                    parent: g.parentId || undefined,
-                    provider: g.provider || 'generic'
+                    group_type: g.type
                 }
             });
         });
@@ -622,8 +651,6 @@ function renderTopology(dsl) {
                     category: n.data.category,
                     layer: n.data.layer,
                     provider: n.data.provider,
-                    deploymentScope: n.data.deploymentScope,
-                    role: n.data.role,
                     description: n.data.description,
                     properties: n.data.properties
                 }
@@ -643,9 +670,7 @@ function renderTopology(dsl) {
                     protocol: e.data?.protocol,
                     encrypted: e.data?.encrypted || false,
                     direction: e.data?.direction || 'forward',
-                    kind: e.data?.kind || 'sync',
-                    taxi_direction: 'rightward',
-                    taxi_turn: '35%'
+                    kind: e.data?.kind || 'sync'
                 }
             });
         });
@@ -666,9 +691,7 @@ function exportTopologyJSON() {
             groups.push({
                 id: ele.id(),
                 label: ele.data('label'),
-                type: ele.data('group_type') || 'generic',
-                parentId: ele.data('parent') || null,
-                provider: ele.data('provider') || 'generic'
+                type: ele.data('group_type') || 'generic'
             });
         } else {
             nodes.push({
@@ -682,8 +705,6 @@ function exportTopologyJSON() {
                     description: ele.data('description') || '',
                     layer: ele.data('layer'),
                     provider: ele.data('provider') || 'generic',
-                    deploymentScope: ele.data('deploymentScope') || 'cloud',
-                    role: ele.data('role') || '',
                     properties: ele.data('properties') || {}
                 }
             });

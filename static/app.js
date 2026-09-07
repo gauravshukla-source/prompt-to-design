@@ -65,7 +65,6 @@ let currentProjectId = "";
 let currentDiagramId = "";
 let currentVersion = 1;
 let customIcons = [];
-let officialIcons = [];
 
 // Initialize Page
 document.addEventListener("DOMContentLoaded", () => {
@@ -75,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initCanvas();
     loadProjects();
     loadCustomIcons();
-    loadOfficialIcons().then(() => { populateToolbox(); populateInspectorIconSelect(); });
+    populateToolbox();
     setupFormListeners();
     setupSelectionListeners();
 });
@@ -231,10 +230,8 @@ function initCanvas() {
                     'target-arrow-color': '#4a4a4c',
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'taxi',
-                    'taxi-direction': 'rightward',
-                    'taxi-turn': '50%',
-                    'taxi-turn-min-distance': 28,
-                    'taxi-radius': 8,
+                    'taxi-direction': 'data(taxi_direction)',
+                    'taxi-turn': 'data(taxi_turn)',
                     'source-endpoint': 'outside-to-node-or-label',
                     'target-endpoint': 'outside-to-node-or-label',
                     'text-background-opacity': 0.85,
@@ -243,13 +240,11 @@ function initCanvas() {
                     'text-background-shape': 'roundrectangle'
                 }
             },
-            { selector: 'edge[kind = "async"]', style: { 'line-style': 'dashed', 'line-dash-pattern': [8, 5], 'target-arrow-shape': 'triangle' } },
-            { selector: 'edge[kind = "auth"]', style: { 'line-style': 'dotted', 'target-arrow-shape': 'diamond', 'width': 2 } },
-            { selector: 'edge[kind = "observability"]', style: { 'line-style': 'dashed', 'line-dash-pattern': [3, 4], 'target-arrow-shape': 'vee' } },
-            { selector: 'edge[direction = "bidirectional"]', style: { 'source-arrow-shape': 'triangle' } },
-            { selector: 'edge[encrypted = true]', style: { 'line-color': '#2f855a', 'target-arrow-color': '#2f855a' } },
-            { selector: 'node[category = "identity"]', style: { 'border-color': '#6b46c1' } },
-            { selector: 'node[category = "security"]', style: { 'border-color': '#c53030' } },
+            { selector: 'edge.edge-async', style: { 'line-style': 'dashed', 'line-color': '#a78bfa', 'target-arrow-color': '#a78bfa' } },
+            { selector: 'edge.edge-auth', style: { 'line-color': '#22c55e', 'target-arrow-color': '#22c55e', 'width': 2.5 } },
+            { selector: 'edge.edge-data', style: { 'line-color': '#38bdf8', 'target-arrow-color': '#38bdf8' } },
+            { selector: 'edge.edge-monitoring', style: { 'line-style': 'dotted', 'line-color': '#f59e0b', 'target-arrow-color': '#f59e0b' } },
+            { selector: 'edge.edge-bidirectional', style: { 'source-arrow-shape': 'triangle', 'source-arrow-color': 'data(target-arrow-color)' } },
             {
                 selector: 'edge:selected',
                 style: {
@@ -277,65 +272,33 @@ function initCanvas() {
 }
 
 // Canvas Helpers
-function canvasZoomIn() { cy.zoom(cy.zoom() * 1.2); }
-function canvasZoomOut() { cy.zoom(cy.zoom() * 0.8); }
-function canvasFit() { cy.fit(); }
-// Deterministic architecture layout. Avoids compound-node overlap and makes connectivity readable.
-function canvasAutoLayout() {
-    // Phase 2 semantic layout: stable layers + barycentric ordering to reduce crossings.
-    const categoryLayer = { external:0, user:0, client:0, edge:1, network:1, gateway:1,
-        security:1, application:2, compute:2, service:2, general:2, integration:3,
-        messaging:3, data:4, database:4, storage:4, identity:5, observability:6 };
-    const leaves = cy.nodes().filter(n => n.data('type') !== 'group');
-    const layerOf = n => {
-        const v = Number(n.data('layer'));
-        return Number.isFinite(v) ? v : (categoryLayer[n.data('category')] ?? 2);
-    };
-    const buckets = new Map();
-    leaves.forEach(n => { const l = layerOf(n); if (!buckets.has(l)) buckets.set(l, []); buckets.get(l).push(n); });
-    const layers = [...buckets.keys()].sort((a,b)=>a-b);
-    // Initial deterministic order, then two sweeps based on connected neighbor positions.
-    layers.forEach(l => buckets.get(l).sort((a,b)=>String(a.data('label')).localeCompare(String(b.data('label')))));
-    for (let pass=0; pass<3; pass++) {
-        const index = new Map();
-        layers.forEach(l => buckets.get(l).forEach((n,i)=>index.set(n.id(),i)));
-        layers.forEach(l => buckets.get(l).sort((a,b) => neighborScore(a,index) - neighborScore(b,index) || String(a.data('label')).localeCompare(String(b.data('label')))));
-    }
-    const xGap = 265, yGap = 135, baseX = 130, centerY = 330;
-    layers.forEach((l, li) => {
-        const list = buckets.get(l); const startY = centerY - ((list.length-1)*yGap)/2;
-        list.forEach((n,i) => n.position({x: baseX + li*xGap, y: startY+i*yGap}));
-    });
-    // Compound boundaries automatically wrap children; do not manually move groups.
-    cy.nodes('[type = "group"]').forEach(g => {
-        g.style({'padding':'38px', 'text-margin-y':'-18px'});
-    });
-    // Route secondary side dependencies vertically where possible.
-    cy.edges().forEach(e => {
-        const sL = layerOf(e.source()), tL = layerOf(e.target());
-        e.data('sameLayer', sL === tL);
-    });
-    cy.fit(cy.elements(), 90);
-}
-function neighborScore(node, index) {
-    const neighbors = node.connectedEdges().map(e => e.source().id() === node.id() ? e.target() : e.source())
-        .filter(n => n && n.data('type') !== 'group');
-    if (!neighbors.length) return Number.MAX_SAFE_INTEGER / 2;
-    const scores = neighbors.map(n => index.get(n.id())).filter(v => Number.isFinite(v));
-    return scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : Number.MAX_SAFE_INTEGER/2;
-}
+function canvasZoomIn() { cy.zoom(cy.zoom() * 1.15); }
+function canvasZoomOut() { cy.zoom(cy.zoom() * 0.85); }
+function canvasFit() { cy.fit(cy.elements(), 55); }
 
-// Architecture quality summary for the UI and future API integrations.
-function getArchitectureDiagnostics() {
-    const nodes = cy.nodes().filter(n => n.data('type') !== 'group');
-    const edges = cy.edges();
-    const warnings = [];
-    if (nodes.length > 20) warnings.push('High node count: consider splitting the architecture into views.');
-    const unlabeled = edges.filter(e => !e.data('label')).length;
-    if (unlabeled) warnings.push(`${unlabeled} connector(s) have no protocol or flow label.`);
-    const dangling = edges.filter(e => !e.source().length || !e.target().length).length;
-    if (dangling) warnings.push(`${dangling} dangling connector(s) detected.`);
-    return { nodes:nodes.length, edges:edges.length, boundaries:cy.nodes('[type = "group"]').length, warnings };
+const ARCH_LAYER = { external:0, user:0, dns:1, edge:1, network:1, security:2, identity:2, gateway:3, application:4, compute:4, general:4, integration:5, messaging:5, data:6, database:6, storage:6, observability:7 };
+function architectureLayer(node) { const n=Number(node.data('layer')); return Number.isFinite(n) ? n : (ARCH_LAYER[node.data('category')] ?? 4); }
+function rootBoundaryId(node) { let p=node.parent(), last=null; while(p && p.length){last=p;p=p.parent();} return last?last.id():'__root__'; }
+function applyEdgeSemantics(edge) {
+    const kind=edge.data('kind')||'sync'; const dir=edge.data('direction')||'forward';
+    edge.removeClass('edge-sync edge-async edge-auth edge-data edge-control edge-monitoring edge-bidirectional');
+    edge.addClass(`edge-${kind}`); if(dir==='bidirectional') edge.addClass('edge-bidirectional');
+}
+function assignConnectorLanes() {
+    const lanes=new Map();
+    cy.edges().forEach(e=>{ applyEdgeSemantics(e); const key=`${Math.min(architectureLayer(e.source()),architectureLayer(e.target()))}:${Math.max(architectureLayer(e.source()),architectureLayer(e.target()))}:${e.data('kind')||'sync'}`; if(!lanes.has(key))lanes.set(key,[]); lanes.get(key).push(e); });
+    lanes.forEach(edges=>edges.sort((a,b)=>a.id().localeCompare(b.id())).forEach((e,i)=>{e.data('taxi_direction',architectureLayer(e.target())>=architectureLayer(e.source())?'rightward':'leftward');e.data('taxi_turn',`${28+(i%4)*12}%`);}));
+}
+// Phase 4: container-aware semantic layout. Boundaries stay attached; components are placed first.
+function canvasAutoLayout() {
+    const nodes=cy.nodes().filter(n=>n.data('type')!=='group'); if(!nodes.length)return;
+    const buckets=new Map(); nodes.forEach(n=>{const l=architectureLayer(n);if(!buckets.has(l))buckets.set(l,[]);buckets.get(l).push(n);});
+    const layers=[...buckets.keys()].sort((a,b)=>a-b), xGap=260, yGap=132, centerY=420;
+    layers.forEach((layer,li)=>{const list=buckets.get(layer).sort((a,b)=>{const ga=rootBoundaryId(a),gb=rootBoundaryId(b);return ga===gb?(a.data('label')||'').localeCompare(b.data('label')||''):ga.localeCompare(gb);});const start=centerY-((list.length-1)*yGap)/2;list.forEach((n,i)=>n.position({x:170+li*xGap,y:start+i*yGap}));});
+    // Compact siblings in the same immediate boundary without flattening nested groups.
+    cy.nodes().filter(n=>n.data('type')==='group').forEach(g=>{const kids=g.children().filter(n=>n.data('type')!=='group');const same=new Map();kids.forEach(k=>{const l=architectureLayer(k);if(!same.has(l))same.set(l,[]);same.get(l).push(k);});same.forEach(arr=>{if(arr.length>1){const x=arr.reduce((s,n)=>s+n.position('x'),0)/arr.length;const y=arr.reduce((s,n)=>s+n.position('y'),0)/arr.length;arr.forEach((n,i)=>n.position({x,y:y+(i-(arr.length-1)/2)*96}));}});});
+    nodes.forEach(n=>{const label=n.data('label')||'';n.style('width',Math.max(96,Math.min(150,74+label.length*3.2)));n.style('height',86);});
+    assignConnectorLanes(); cy.style().update(); cy.fit(cy.elements(),65);
 }
 
 // Project Logic
@@ -463,8 +426,8 @@ function renderTopology(dsl) {
                     label: g.label,
                     type: 'group',
                     group_type: g.type,
-                    provider: g.provider || 'generic',
-                    zone: g.zone || ''
+                    parent: g.parentId || undefined,
+                    provider: g.provider || 'generic'
                 }
             });
         });
@@ -473,7 +436,12 @@ function renderTopology(dsl) {
     // Add nodes
     if (dsl.nodes) {
         dsl.nodes.forEach(n => {
-            let iconUrl = resolveIconUrl(n.data.icon, n.data.provider, n.data.category);
+            let iconUrl = getIconUri(n.data.icon);
+            if (!iconUrl) {
+                // Check if it's a custom icon
+                const customIcon = customIcons.find(ci => ci.tag === n.data.icon);
+                if (customIcon) iconUrl = customIcon.url;
+            }
             
             elements.push({
                 data: {
@@ -482,10 +450,12 @@ function renderTopology(dsl) {
                     parent: n.parentId || undefined,
                     type: n.type,
                     icon: n.data.icon,
-                    icon_url: iconUrl,
+                    icon_url: iconUrl || getIconUri('server'),
                     category: n.data.category,
                     layer: n.data.layer,
                     provider: n.data.provider,
+                    deploymentScope: n.data.deploymentScope,
+                    role: n.data.role,
                     description: n.data.description,
                     properties: n.data.properties
                 }
@@ -505,7 +475,9 @@ function renderTopology(dsl) {
                     protocol: e.data?.protocol,
                     encrypted: e.data?.encrypted || false,
                     direction: e.data?.direction || 'forward',
-                    kind: e.data?.kind || 'sync'
+                    kind: e.data?.kind || 'sync',
+                    taxi_direction: 'rightward',
+                    taxi_turn: '35%'
                 }
             });
         });
@@ -513,7 +485,6 @@ function renderTopology(dsl) {
     
     cy.add(elements);
     canvasAutoLayout();
-    console.info("Architecture diagnostics", getArchitectureDiagnostics());
 }
 
 // Generate topology back to DSL format for storage / refinement
@@ -528,8 +499,8 @@ function exportTopologyJSON() {
                 id: ele.id(),
                 label: ele.data('label'),
                 type: ele.data('group_type') || 'generic',
-                provider: ele.data('provider') || 'generic',
-                zone: ele.data('zone') || null
+                parentId: ele.data('parent') || null,
+                provider: ele.data('provider') || 'generic'
             });
         } else {
             nodes.push({
@@ -543,6 +514,8 @@ function exportTopologyJSON() {
                     description: ele.data('description') || '',
                     layer: ele.data('layer'),
                     provider: ele.data('provider') || 'generic',
+                    deploymentScope: ele.data('deploymentScope') || 'cloud',
+                    role: ele.data('role') || '',
                     properties: ele.data('properties') || {}
                 }
             });
@@ -611,36 +584,6 @@ btnSave.addEventListener("click", async () => {
 });
 
 // Custom Icons Ingestion Logic
-async function loadOfficialIcons() {
-    try {
-        const res = await fetch('/api/icon-library');
-        if (!res.ok) throw new Error('Icon library unavailable');
-        const payload = await res.json();
-        officialIcons = payload.icons || [];
-        console.info(`Loaded ${officialIcons.length} registered architecture icons`);
-    } catch (e) {
-        console.warn('Official icon library unavailable; using embedded fallbacks.', e);
-        officialIcons = [];
-    }
-}
-
-function getRegisteredIcon(iconName, provider = null, category = null) {
-    const key = String(iconName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    return officialIcons.find(i => i.id === key || i.slug === key || (provider && i.provider === provider && i.slug === key))
-        || officialIcons.find(i => (i.aliases || []).some(a => String(a).toLowerCase() === String(iconName).toLowerCase()) && (!provider || i.provider === provider))
-        || null;
-}
-
-function resolveIconUrl(iconName, provider = null, category = null) {
-    const registered = getRegisteredIcon(iconName, provider, category);
-    if (registered) return registered.assetStatus === 'available' ? registered.path : (registered.fallbackPath || '/static/icons/_fallback/generic-service.svg');
-    const embedded = getIconUri(iconName);
-    if (embedded) return embedded;
-    const custom = customIcons.find(ci => ci.tag === iconName);
-    if (custom) return custom.url;
-    return '/static/icons/_fallback/generic-service.svg';
-}
-
 async function loadCustomIcons() {
     try {
         const res = await fetch("/api/icons");
@@ -834,16 +777,9 @@ function populateInspectorIconSelect() {
     const select = document.getElementById("inspect-node-icon");
     select.innerHTML = "";
     
-    // Registered architecture icons (official asset paths when installed, fallback otherwise)
-    const optGroupOfficial = document.createElement("optgroup");
-    optGroupOfficial.label = "Architecture Icon Library";
-    officialIcons.forEach(i => {
-        const opt = document.createElement("option"); opt.value = i.id; opt.textContent = `${i.provider.toUpperCase()} — ${i.label}${i.assetStatus === 'missing' ? ' (fallback until asset installed)' : ''}`; optGroupOfficial.appendChild(opt);
-    });
-    select.appendChild(optGroupOfficial);
-    // Embedded fallback icons
+    // Add standard icons
     const optGroupStd = document.createElement("optgroup");
-    optGroupStd.label = "Embedded Fallback Icons";
+    optGroupStd.label = "Standard Icons";
     Object.keys(SVG_ICONS).forEach(key => {
         const opt = document.createElement("option");
         opt.value = key;
@@ -871,7 +807,11 @@ function addCanvasNode(iconName) {
     const id = "node_" + Math.random().toString(36).substring(2, 10);
     const parent = document.getElementById("inspect-node-parent").value || undefined;
     
-    let iconUrl = resolveIconUrl(iconName);
+    let iconUrl = getIconUri(iconName);
+    if (!iconUrl) {
+        const custom = customIcons.find(ci => ci.tag === iconName);
+        if (custom) iconUrl = custom.url;
+    }
     
     cy.add({
         data: {
@@ -880,7 +820,7 @@ function addCanvasNode(iconName) {
             parent,
             type: 'cloudIcon',
             icon: iconName,
-            icon_url: iconUrl,
+            icon_url: iconUrl || getIconUri('server'),
             category: 'general',
             description: ''
         },
@@ -1039,13 +979,17 @@ function updateSelectedNode() {
     const parent = document.getElementById("inspect-node-parent").value || undefined;
     const desc = document.getElementById("inspect-node-desc").value.trim();
     
-    let iconUrl = resolveIconUrl(icon, selectedElement.data("provider"), selectedElement.data("category"));
+    let iconUrl = getIconUri(icon);
+    if (!iconUrl) {
+        const custom = customIcons.find(ci => ci.tag === icon);
+        if (custom) iconUrl = custom.url;
+    }
     
     selectedElement.data({
         label,
         icon,
         parent,
-        icon_url: iconUrl,
+        icon_url: iconUrl || getIconUri('server'),
         description: desc
     });
     
@@ -1103,210 +1047,4 @@ function exportDiagram(format) {
     } else if (format === 'svg') {
         alert("SVG export is partially supported via raw vector mapping. Recommend exporting high-resolution PNG or raw JSON topology.");
     }
-}
-
-/* ========================= PHASE 3 ARCHITECTURE STUDIO =========================
-   The overrides below preserve the existing UI while upgrading layout, routing,
-   multi-view projection, linting, legend generation and SVG/PDF export.
-*/
-let phase3FullTopology = null;
-let phase3ActiveView = 'logical';
-
-const PHASE3_LAYER = { external:0,user:0,client:0,saas:0,edge:1,network:1,gateway:1,
-    application:2,compute:2,service:2,general:2,integration:3,messaging:3,
-    data:4,database:4,storage:4,identity:5,security:5,observability:6 };
-
-function phase3Layer(node) {
-    const v = Number(node.data('layer'));
-    return Number.isFinite(v) ? v : (PHASE3_LAYER[node.data('category')] ?? 2);
-}
-function phase3PortPair(source, target) {
-    const a = phase3Layer(source), b = phase3Layer(target);
-    if (a === b) return ['south', 'north'];
-    return b > a ? ['east', 'west'] : ['west', 'east'];
-}
-function phase3OrderLayers(leaves, layers) {
-    const buckets = new Map(layers.map(l => [l, []]));
-    leaves.forEach(n => buckets.get(phase3Layer(n)).push(n));
-    layers.forEach(l => buckets.get(l).sort((a,b)=>String(a.data('label')).localeCompare(String(b.data('label')))));
-    for (let pass=0; pass<6; pass++) {
-        const order = new Map(); layers.forEach(l=>buckets.get(l).forEach((n,i)=>order.set(n.id(), i)));
-        const sweep = pass % 2 ? [...layers].reverse() : layers;
-        sweep.forEach(l => buckets.get(l).sort((a,b)=>phase3Barycenter(a,order)-phase3Barycenter(b,order) || String(a.data('label')).localeCompare(String(b.data('label')))));
-    }
-    return buckets;
-}
-function phase3Barycenter(node, order) {
-    const vals = node.connectedEdges().map(e=> e.source().id()===node.id()?e.target():e.source()).filter(Boolean)
-      .map(n=>order.get(n.id())).filter(Number.isFinite);
-    return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 99999;
-}
-
-function initCanvas() {
-    cy = cytoscape({
-        container: document.getElementById('cy'),
-        style: [
-            { selector:'node', style:{
-                'label':'data(label)','color':'#dbe4ee','font-size':'10px','font-family':'Inter, Arial, sans-serif',
-                'text-valign':'bottom','text-margin-y':'7px','background-color':'#18212f','border-width':'2px','border-color':'#526274',
-                'width':'66px','height':'66px','shape':'roundrectangle','background-image':'data(icon_url)','background-fit':'contain',
-                'background-width':'70%','background-height':'70%','text-wrap':'wrap','text-max-width':'125px',
-                'text-outline-width':2,'text-outline-color':'#0b111a','transition-property':'border-color, background-color','transition-duration':'0.2s'}},
-            { selector:'node:selected', style:{'border-color':'#38bdf8','border-width':'3px','background-color':'#223044'}},
-            { selector:'node[type="group"]', style:{'label':'data(label)','text-valign':'top','text-halign':'left','text-margin-x':'12px','text-margin-y':'-14px',
-                'font-size':'12px','font-weight':'600','color':'#cbd5e1','background-color':'rgba(30,41,59,0.08)','border-style':'dashed','border-width':'1.5px',
-                'border-color':'#64748b','shape':'roundrectangle','padding':'34px','background-image':'none'}},
-            { selector:'node[type="group"][zone = "public"]', style:{'border-color':'#22c55e','background-color':'rgba(34,197,94,0.04)'}},
-            { selector:'node[type="group"][zone = "private"]', style:{'border-color':'#38bdf8','background-color':'rgba(56,189,248,0.04)'}},
-            { selector:'node[category = "security"]', style:{'border-color':'#fb7185'}},
-            { selector:'node[category = "identity"]', style:{'border-color':'#a78bfa'}},
-            { selector:'node[category = "observability"]', style:{'border-color':'#22c55e'}},
-            { selector:'edge', style:{'label':'data(label)','font-size':'9px','font-family':'Inter, Arial, sans-serif','color':'#cbd5e1','width':2,
-                'line-color':'#64748b','target-arrow-color':'#64748b','target-arrow-shape':'triangle','curve-style':'taxi',
-                'taxi-direction':'rightward','taxi-turn':'45%','taxi-turn-min-distance':32,'taxi-radius':8,
-                'text-background-opacity':0.92,'text-background-color':'#0b111a','text-background-padding':'3px','text-background-shape':'roundrectangle'}},
-            { selector:'edge.route-vertical', style:{'taxi-direction':'downward'}},
-            { selector:'edge[kind = "async"]', style:{'line-style':'dashed','line-dash-pattern':[8,5],'target-arrow-shape':'triangle','line-color':'#f59e0b','target-arrow-color':'#f59e0b'}},
-            { selector:'edge[kind = "auth"]', style:{'line-style':'dotted','target-arrow-shape':'diamond','line-color':'#a78bfa','target-arrow-color':'#a78bfa'}},
-            { selector:'edge[kind = "observability"]', style:{'line-style':'dashed','line-dash-pattern':[3,4],'target-arrow-shape':'vee','line-color':'#22c55e','target-arrow-color':'#22c55e'}},
-            { selector:'edge[kind = "data"]', style:{'line-color':'#38bdf8','target-arrow-color':'#38bdf8'}},
-            { selector:'edge[direction = "bidirectional"]', style:{'source-arrow-shape':'triangle','source-arrow-color':'#64748b'}},
-            { selector:'edge[encrypted = true]', style:{'line-color':'#10b981','target-arrow-color':'#10b981'}},
-            { selector:'edge:selected', style:{'line-color':'#38bdf8','target-arrow-color':'#38bdf8','width':3}}
-        ], layout:{name:'preset'}
-    });
-    cy.on('add remove', () => { const empty=document.getElementById('empty-state'); if(empty) empty.classList.toggle('hidden', cy.elements().length>0); updateParentSelectOptions(); });
-    cy.on('render resize', phase3RenderLegend);
-}
-
-function canvasAutoLayout() {
-    const leaves = cy.nodes().filter(n=>n.data('type')!=='group');
-    if (!leaves.length) return;
-    const primary = leaves.filter(n=>!['identity','observability'].includes(n.data('category')));
-    const allLayers = [...new Set(primary.map(phase3Layer))].sort((a,b)=>a-b);
-    const buckets = phase3OrderLayers(primary, allLayers);
-    const xGap=285, yGap=145, baseX=150, centerY=370;
-    allLayers.forEach((l, li)=>{
-        const list=buckets.get(l)||[]; const start=centerY-((list.length-1)*yGap)/2;
-        list.forEach((n,i)=>n.position({x:baseX+li*xGap,y:start+i*yGap}));
-    });
-    // Side rails: identity and observability should not cross the primary request path.
-    const maxX = baseX + Math.max(0,allLayers.length-1)*xGap;
-    leaves.filter(n=>n.data('category')==='identity').forEach((n,i)=>n.position({x:Math.min(maxX,baseX+xGap*2),y:90+i*115}));
-    leaves.filter(n=>n.data('category')==='observability').forEach((n,i)=>n.position({x:Math.min(maxX,baseX+xGap*3),y:650+i*115}));
-    cy.edges().forEach(e=>{
-        const [sp,tp]=phase3PortPair(e.source(),e.target());
-        if (!e.data('sourcePort') || e.data('sourcePort')==='auto') e.data('sourcePort',sp);
-        if (!e.data('targetPort') || e.data('targetPort')==='auto') e.data('targetPort',tp);
-        e.toggleClass('route-vertical', ['north','south'].includes(e.data('sourcePort')) || ['north','south'].includes(e.data('targetPort')));
-    });
-    cy.nodes('[type = "group"]').style({'padding':'42px','text-margin-y':'-20px'});
-    cy.fit(cy.elements(), 100);
-    phase3RenderLegend();
-}
-
-function renderTopology(dsl, preserveFull = false) {
-    if (!preserveFull) phase3FullTopology = JSON.parse(JSON.stringify(dsl));
-    cy.elements().remove(); const elements=[];
-    (dsl.groups||[]).forEach(g=>elements.push({data:{id:g.id,label:g.label,type:'group',group_type:g.type,provider:g.provider||'generic',zone:g.zone||''}}));
-    (dsl.nodes||[]).forEach(n=>{
-        let iconUrl=getIconUri(n.data.icon); if(!iconUrl){const c=customIcons.find(ci=>ci.tag===n.data.icon); if(c) iconUrl=c.url;}
-        elements.push({data:{id:n.id,label:n.data.label,parent:n.parentId||undefined,type:n.type,icon:n.data.icon,icon_url:iconUrl||getIconUri('server'),category:n.data.category,layer:n.data.layer,provider:n.data.provider,description:n.data.description,properties:n.data.properties}});
-    });
-    (dsl.edges||[]).forEach(e=>{
-        const d=e.data||{}; elements.push({data:{id:e.id,source:e.source,target:e.target,label:e.label||d.protocol||'',protocol:d.protocol||'',encrypted:!!d.encrypted,direction:d.direction||'forward',kind:d.kind||'sync',sourcePort:d.sourcePort||'auto',targetPort:d.targetPort||'auto'}});
-    });
-    cy.add(elements); canvasAutoLayout(); console.info('Phase 3 diagnostics',getArchitectureDiagnostics());
-}
-
-async function setArchitectureView(view) {
-    if (!phase3FullTopology) return alert('Generate or load an architecture first.');
-    const res=await fetch('/api/architecture/view',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram:phase3FullTopology,view})});
-    if(!res.ok) return alert('Unable to generate architecture view.');
-    phase3ActiveView=view; renderTopology(await res.json(), true);
-}
-async function runArchitectureLint() {
-    const topology=exportTopologyJSON();
-    const res=await fetch('/api/architecture/lint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram:topology})});
-    if(!res.ok) return alert('Architecture linting failed.');
-    const out=await res.json(), l=out.lint;
-    const lines=[`Architecture Score: ${l.score}/100 (${l.grade})`,...l.findings.map(f=>`${f.severity.toUpperCase()}: ${f.message}`)];
-    alert(lines.join('\n\n')); return out;
-}
-
-function phase3RenderLegend() {
-    if(!cy || !cy.container()) return;
-    const parent=cy.container().parentElement; if(!parent) return;
-    let legend=parent.querySelector('.phase3-legend');
-    if(!legend){ legend=document.createElement('div'); legend.className='phase3-legend'; legend.style.cssText='position:absolute;left:14px;bottom:14px;z-index:5;background:rgba(11,17,26,.92);border:1px solid #334155;border-radius:10px;padding:10px 12px;color:#cbd5e1;font:10px Inter,Arial;box-shadow:0 8px 30px rgba(0,0,0,.25);'; parent.style.position='relative'; parent.appendChild(legend); }
-    legend.innerHTML='<b style="display:block;margin-bottom:6px">Architecture Legend</b><span>→ Sync</span> &nbsp; <span style="color:#f59e0b">- - Async</span> &nbsp; <span style="color:#a78bfa">·· Auth</span> &nbsp; <span style="color:#10b981">→ Encrypted</span><br><span style="color:#94a3b8">View: '+phase3ActiveView+'</span>';
-}
-
-function phase3Escape(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
-function phase3SvgDataUri(uri){ return uri && uri.startsWith('data:image') ? uri : ''; }
-function buildArchitectureSVG() {
-    const bb=cy.elements().boundingBox({includeLabels:true}); const pad=80; const w=Math.max(800,bb.w+pad*2), h=Math.max(500,bb.h+pad*2), ox=pad-bb.x, oy=pad-bb.y;
-    const marker='<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#64748b"/></marker></defs>';
-    let body='<rect width="100%" height="100%" fill="#0b111a"/>';
-    cy.nodes('[type = "group"]').forEach(g=>{const b=g.boundingBox({includeLabels:true}); body+=`<rect x="${b.x+ox}" y="${b.y+oy}" width="${b.w}" height="${b.h}" rx="14" fill="none" stroke="#64748b" stroke-dasharray="6 4"/><text x="${b.x+ox+12}" y="${b.y+oy+18}" fill="#cbd5e1" font-family="Inter,Arial" font-size="12" font-weight="600">${phase3Escape(g.data('label'))}</text>`;});
-    cy.edges().forEach(e=>{const s=e.source().position(),t=e.target().position();const dx=t.x-s.x,dy=t.y-s.y;let d; if(Math.abs(dx)>=Math.abs(dy)){const mx=(s.x+t.x)/2; d=`M ${s.x+ox} ${s.y+oy} L ${mx+ox} ${s.y+oy} L ${mx+ox} ${t.y+oy} L ${t.x+ox} ${t.y+oy}`;}else{const my=(s.y+t.y)/2; d=`M ${s.x+ox} ${s.y+oy} L ${s.x+ox} ${my+oy} L ${t.x+ox} ${my+oy} L ${t.x+ox} ${t.y+oy}`;} const color=e.data('encrypted')?'#10b981':e.data('kind')==='async'?'#f59e0b':e.data('kind')==='auth'?'#a78bfa':'#64748b'; const dash=e.data('kind')==='async'?'stroke-dasharray="8 5"':e.data('kind')==='auth'?'stroke-dasharray="2 4"':''; body+=`<path d="${d}" fill="none" stroke="${color}" stroke-width="2" ${dash} marker-end="url(#arrow)"/>`; const label=e.data('label'); if(label) body+=`<text x="${(s.x+t.x)/2+ox}" y="${(s.y+t.y)/2+oy-6}" fill="#cbd5e1" font-family="Inter,Arial" font-size="9" text-anchor="middle">${phase3Escape(label)}</text>`;});
-    cy.nodes().filter(n=>n.data('type')!=='group').forEach(n=>{const p=n.position(),size=66,x=p.x-size/2+ox,y=p.y-size/2+oy,uri=phase3SvgDataUri(n.data('icon_url')); body+=`<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="10" fill="#18212f" stroke="#526274" stroke-width="2"/>`; if(uri) body+=`<image href="${uri}" x="${x+10}" y="${y+8}" width="46" height="46"/>`; body+=`<text x="${p.x+ox}" y="${y+80}" fill="#dbe4ee" font-family="Inter,Arial" font-size="10" text-anchor="middle">${phase3Escape(n.data('label'))}</text>`;});
-    body+=`<text x="24" y="30" fill="#e2e8f0" font-family="Inter,Arial" font-size="18" font-weight="700">Architecture Diagram — ${phase3Escape(phase3ActiveView)}</text>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${marker}${body}</svg>`;
-}
-function phase3Download(name, content, type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-function exportDiagram(format) {
-    if(cy.elements().length===0) return alert('Nothing to export.');
-    if(format==='json'){const t=exportTopologyJSON();return phase3Download(`diagram_${currentDiagramId||'draft'}.json`,JSON.stringify(t,null,2),'application/json');}
-    if(format==='png'){const blob=cy.png({output:'blob',bg:'#0b111a',scale:3});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`diagram_${currentDiagramId||'draft'}.png`;a.click();return;}
-    const svg=buildArchitectureSVG();
-    if(format==='svg') return phase3Download(`diagram_${currentDiagramId||'draft'}.svg`,svg,'image/svg+xml');
-    if(format==='pdf'){const win=window.open('','_blank');win.document.write(`<html><head><title>Architecture Diagram</title></head><body style="margin:0">${svg}<script>window.onload=()=>window.print()<\/script></body></html>`);win.document.close();}
-}
-
-/* ===== Phase 3 Frontend Integration Upgrade ===== */
-(function () {
-  function byId(id){ return document.getElementById(id); }
-  function setSelect(id, value){ const el=byId(id); if(el) el.value=value ?? 'auto'; }
-  function renderQuality(out){
-    const l=out?.lint || out; if(!l) return;
-    const score=Number(l.score ?? 0), grade=l.grade ?? '--';
-    const header=byId('architecture-score'), scoreValue=byId('quality-score-value'), fill=byId('quality-bar-fill'), gradeEl=byId('quality-grade'), findings=byId('quality-findings');
-    if(header) header.textContent=`${score}/100`;
-    if(scoreValue) scoreValue.textContent=score;
-    if(fill) fill.style.width=`${Math.max(0,Math.min(100,score))}%`;
-    if(gradeEl) gradeEl.textContent=`Grade ${grade}`;
-    if(findings){ findings.innerHTML=''; (l.findings||[]).forEach(f=>{const d=document.createElement('div');d.className=`finding-item ${String(f.severity||'info').toLowerCase()}`;d.textContent=`${String(f.severity||'info').toUpperCase()}: ${f.message}`;findings.appendChild(d);}); if(!(l.findings||[]).length)findings.textContent='No findings. Architecture passed the current checks.'; }
-  }
-  async function lintAndRender(){ try{ const out=await runArchitectureLint(); if(out) renderQuality(out); }catch(e){ console.error(e); } }
-  document.addEventListener('DOMContentLoaded',()=>{
-    const qTab=byId('tab-quality'), inspector=byId('panel-inspector'), toolbox=byId('panel-toolbox'), quality=byId('panel-quality');
-    if(qTab){ qTab.addEventListener('click',()=>{ [byId('tab-inspector'),byId('tab-toolbox'),qTab].forEach(t=>t?.classList.remove('border-brand-500','text-white')); [byId('tab-inspector'),byId('tab-toolbox'),qTab].forEach(t=>t?.classList.add('border-transparent','text-slate-400')); qTab.classList.add('border-brand-500','text-white'); qTab.classList.remove('border-transparent','text-slate-400'); inspector?.classList.add('hidden'); toolbox?.classList.add('hidden'); quality?.classList.remove('hidden'); }); }
-    byId('btn-run-lint')?.addEventListener('click',lintAndRender); byId('btn-run-lint-panel')?.addEventListener('click',lintAndRender);
-    byId('architecture-view')?.addEventListener('change',e=>setArchitectureView(e.target.value));
-    byId('btn-toggle-left')?.addEventListener('click',()=>document.querySelector('main > section:first-child')?.classList.toggle('sidebar-collapsed'));
-    byId('btn-toggle-right')?.addEventListener('click',()=>document.querySelector('main > section:last-child')?.classList.toggle('sidebar-collapsed'));
-  });
-  window.__phase3RenderQuality=renderQuality; window.__phase3Lint=lintAndRender; window.__phase3SetSelect=setSelect;
-})();
-
-function showNodeInspector(node) {
-    document.getElementById("no-selection").classList.add("hidden"); document.getElementById("edge-inspector").classList.add("hidden");
-    const form=document.getElementById("node-inspector"); form.classList.remove("hidden");
-    document.getElementById("inspect-node-label").value=node.data('label')||''; document.getElementById("inspect-node-icon").value=node.data('icon')||'server'; document.getElementById("inspect-node-parent").value=node.data('parent')||''; document.getElementById("inspect-node-desc").value=node.data('description')||'';
-    if(document.getElementById('inspect-node-provider')) document.getElementById('inspect-node-provider').value=node.data('provider')||'generic';
-    if(document.getElementById('inspect-node-layer')) document.getElementById('inspect-node-layer').value=node.data('layer') ?? '';
-}
-function showEdgeInspector(edge) {
-    document.getElementById("no-selection").classList.add("hidden"); document.getElementById("node-inspector").classList.add("hidden"); document.getElementById("edge-inspector").classList.remove("hidden");
-    document.getElementById("inspect-edge-label").value=edge.data('label')||''; document.getElementById("inspect-edge-protocol").value=edge.data('protocol')||''; document.getElementById("inspect-edge-encrypted").checked=!!edge.data('encrypted');
-    window.__phase3SetSelect?.('inspect-edge-kind',edge.data('kind')||'sync'); window.__phase3SetSelect?.('inspect-edge-direction',edge.data('direction')||'forward'); window.__phase3SetSelect?.('inspect-edge-source-port',edge.data('sourcePort')||'auto'); window.__phase3SetSelect?.('inspect-edge-target-port',edge.data('targetPort')||'auto');
-}
-function updateSelectedNode() {
-    if(!selectedElement)return; const icon=document.getElementById('inspect-node-icon').value; let iconUrl=getIconUri(icon); if(!iconUrl){const c=customIcons.find(ci=>ci.tag===icon);if(c)iconUrl=c.url;}
-    selectedElement.data({label:document.getElementById('inspect-node-label').value.trim(),icon,parent:document.getElementById('inspect-node-parent').value||undefined,icon_url:iconUrl||getIconUri('server'),description:document.getElementById('inspect-node-desc').value.trim(),provider:document.getElementById('inspect-node-provider')?.value||selectedElement.data('provider')||'generic',layer:Number(document.getElementById('inspect-node-layer')?.value||selectedElement.data('layer')||0)}); cy.elements().unselect();
-}
-function updateSelectedEdge() {
-    if(!selectedElement)return; const protocol=document.getElementById('inspect-edge-protocol').value.trim();
-    selectedElement.data({label:document.getElementById('inspect-edge-label').value.trim()||protocol,protocol,encrypted:document.getElementById('inspect-edge-encrypted').checked,kind:document.getElementById('inspect-edge-kind')?.value||'sync',direction:document.getElementById('inspect-edge-direction')?.value||'forward',sourcePort:document.getElementById('inspect-edge-source-port')?.value||'auto',targetPort:document.getElementById('inspect-edge-target-port')?.value||'auto'}); canvasAutoLayout(); cy.elements().unselect();
 }

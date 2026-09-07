@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Enterprise Architecture Studio</title>
+    <title>Prompt to Design - Editable Diagrams</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -49,7 +49,7 @@
             </div>
             <div>
                 <h1 class="text-lg font-bold tracking-tight text-white">Prompt to Design</h1>
-                <p class="text-xs text-slate-400">AI Enterprise Architecture Studio</p>
+                <p class="text-xs text-slate-400">Agentic Editable Diagram Generator</p>
             </div>
         </div>
         
@@ -65,15 +65,6 @@
                 </button>
             </div>
 
-            <!-- Architecture View -->
-            <div class="flex items-center gap-2" id="architecture-view-control">
-                <span class="text-xs text-slate-400">View:</span>
-                <select id="architecture-view" class="bg-dark-900 border border-dark-50 text-sm rounded-md px-3 py-1.5 focus:outline-none focus:border-brand-500">
-                    <option value="logical">Logical</option><option value="context">Context</option><option value="integration">Integration</option><option value="security">Security</option><option value="data-flow">Data Flow</option>
-                </select>
-            </div>
-            <!-- Architecture Score -->
-            <button id="btn-run-lint" class="arch-score-chip" title="Run Architecture Quality Analysis"><span class="score-dot"></span><span>Quality</span><strong id="architecture-score">--</strong></button>
             <!-- GCP Vertex AI / ADC Status Badge -->
             <div id="auth-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs bg-dark-900 border border-dark-50 text-slate-300" title="Connected via Application Default Credentials (ADC)">
                 <span id="auth-status-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
@@ -99,7 +90,6 @@
                         <button onclick="exportDiagram('svg')" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-brand-500 hover:text-white transition-colors flex items-center gap-2">
                             <i data-lucide="file-code" class="w-4 h-4"></i> Export SVG
                         </button>
-                        <button onclick="exportDiagram('pdf')" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-brand-500 hover:text-white transition-colors flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4"></i> Export PDF</button>
                         <button onclick="exportDiagram('json')" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-brand-500 hover:text-white transition-colors flex items-center gap-2">
                             <i data-lucide="file-json" class="w-4 h-4"></i> Export JSON
                         </button>
@@ -205,11 +195,9 @@
                     <i data-lucide="maximize" class="w-4 h-4"></i>
                 </button>
                 <div class="h-4 w-[1px] bg-dark-100"></div>
-                <button id="btn-toggle-left" class="p-2 hover:bg-dark-100 rounded-md text-slate-300" title="Toggle AI Designer"><i data-lucide="panel-left" class="w-4 h-4"></i></button>
-                <button id="btn-toggle-right" class="p-2 hover:bg-dark-100 rounded-md text-slate-300" title="Toggle Inspector"><i data-lucide="panel-right" class="w-4 h-4"></i></button>
-                <button onclick="canvasAutoLayout()" class="p-2 hover:bg-dark-100 rounded-md text-brand-500 hover:text-brand-600 transition-colors flex items-center gap-1 text-xs font-semibold" title="Auto-align components">
+                <button onclick="canvasAutoLayout()" class="p-2 hover:bg-dark-100 rounded-md text-brand-500 hover:text-brand-600 transition-colors flex items-center gap-1 text-xs font-semibold" title="Run Intelligent Enterprise Layout">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                    <span>Auto-Layout</span>
+                    <span>Enterprise Layout</span>
                 </button>
             </div>
             
@@ -227,9 +215,12 @@
         <section class="w-80 border-l border-dark-100 bg-dark-800/40 flex flex-col h-full z-10">
             <!-- Toolbox Title -->
             <div class="flex border-b border-dark-100 bg-dark-800">
-                <button id="tab-inspector" class="flex-1 py-3 text-sm font-medium border-b-2 border-brand-500 text-white transition-colors">Inspector</button>
-                <button id="tab-toolbox" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">Toolbox</button>
-                <button id="tab-quality" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">Quality</button>
+                <button id="tab-inspector" class="flex-1 py-3 text-sm font-medium border-b-2 border-brand-500 text-white transition-colors">
+                    Inspector
+                </button>
+                <button id="tab-toolbox" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
+                    Toolbox
+                </button>
             </div>
 
             <!-- Content Area -->
@@ -265,7 +256,6 @@
                                     <option value="">None (Root level)</option>
                                 </select>
                             </div>
-                            <div class="grid grid-cols-2 gap-2"><div><label class="block text-[10px] text-slate-400 mb-1">Provider</label><select id="inspect-node-provider" class="w-full bg-dark-900 border border-dark-50 rounded px-2 py-1.5 text-xs"><option value="generic">Generic</option><option value="aws">AWS</option><option value="azure">Azure</option><option value="gcp">GCP</option><option value="enterprise">Enterprise</option></select></div><div><label class="block text-[10px] text-slate-400 mb-1">Architecture Layer</label><input id="inspect-node-layer" type="number" min="0" class="w-full bg-dark-900 border border-dark-50 rounded px-2 py-1.5 text-xs" /></div></div>
                             <div>
                                 <label class="block text-[10px] text-slate-400 mb-1">Description</label>
                                 <textarea id="inspect-node-desc" rows="2" class="w-full bg-dark-900 border border-dark-50 rounded p-2 text-xs focus:outline-none focus:border-brand-500 resize-none text-slate-200"></textarea>
@@ -295,9 +285,6 @@
                                 <label class="block text-[10px] text-slate-400 mb-1">Integration Protocol</label>
                                 <input type="text" id="inspect-edge-protocol" placeholder="e.g., HTTPS, gRPC, LDAP" class="w-full bg-dark-900 border border-dark-50 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-brand-500 text-slate-200" />
                             </div>
-                            <div><label class="block text-[10px] text-slate-400 mb-1">Connection Type</label><select id="inspect-edge-kind" class="w-full bg-dark-900 border border-dark-50 rounded px-2 py-1.5 text-xs"><option value="sync">Synchronous</option><option value="async">Asynchronous</option><option value="auth">Authentication</option><option value="data">Data Flow</option><option value="observability">Observability</option></select></div>
-                            <div><label class="block text-[10px] text-slate-400 mb-1">Direction</label><select id="inspect-edge-direction" class="w-full bg-dark-900 border border-dark-50 rounded px-2 py-1.5 text-xs"><option value="forward">Forward</option><option value="bidirectional">Bidirectional</option></select></div>
-                            <div class="grid grid-cols-2 gap-2"><div><label class="block text-[10px] text-slate-400 mb-1">Source Port</label><select id="inspect-edge-source-port" class="w-full bg-dark-900 border border-dark-50 rounded px-2 py-1.5 text-xs"><option>auto</option><option>east</option><option>west</option><option>north</option><option>south</option></select></div><div><label class="block text-[10px] text-slate-400 mb-1">Target Port</label><select id="inspect-edge-target-port" class="w-full bg-dark-900 border border-dark-50 rounded px-2 py-1.5 text-xs"><option>auto</option><option>east</option><option>west</option><option>north</option><option>south</option></select></div></div>
                             <div class="flex items-center gap-2">
                                 <input type="checkbox" id="inspect-edge-encrypted" class="rounded border-dark-50 bg-dark-900 text-brand-500 focus:ring-brand-500 h-4 w-4" />
                                 <label for="inspect-edge-encrypted" class="text-xs text-slate-400">Encrypted Transport</label>
@@ -312,9 +299,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Quality Tab -->
-                <div id="panel-quality" class="hidden space-y-4"><div class="quality-card"><div class="quality-kicker">Architecture Quality</div><div class="quality-score"><span id="quality-score-value">--</span><small>/100</small></div><div class="quality-bar"><span id="quality-bar-fill"></span></div><div id="quality-grade" class="quality-grade">Run analysis to score this architecture</div></div><div><h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Findings</h3><div id="quality-findings" class="space-y-2 text-xs text-slate-400">No analysis yet.</div></div><button id="btn-run-lint-panel" class="w-full bg-brand-500 hover:bg-brand-600 text-white py-2 rounded-lg text-xs font-semibold">Run Architecture Analysis</button></div>
 
                 <!-- Toolbox Tab -->
                 <div id="panel-toolbox" class="hidden space-y-4">
@@ -355,8 +339,8 @@
             <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand-500"></div>
             <i data-lucide="sparkles" class="w-6 h-6 text-brand-500 absolute animate-pulse"></i>
         </div>
-        <p class="text-sm font-semibold mt-4 text-white">Architecture Engine Working...</p>
-        <p id="loader-stage" class="text-xs text-slate-400 mt-1">Understanding requirements and topology</p>
+        <p class="text-sm font-semibold mt-4 text-white">Gemini Architecting Diagram...</p>
+        <p class="text-xs text-slate-400 mt-1">Building semantic layers, nested boundaries and routed connections</p>
     </div>
 
     <!-- Modals -->
@@ -379,7 +363,8 @@
 
     <!-- Cytoscape layout and dependency files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
-    <!-- Phase 3 uses deterministic architecture layout; generic Dagre auto-layout is intentionally not loaded. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
     <!-- Custom Application JS -->
     <script src="/static/app.js"></script>
 </body>

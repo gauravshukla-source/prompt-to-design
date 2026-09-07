@@ -65,15 +65,36 @@ let currentProjectId = "";
 let currentDiagramId = "";
 let currentVersion = 1;
 let customIcons = [];
+let iconRegistry = {};
+
+async function loadIconRegistry() {
+    try {
+        const res = await fetch('/static/icon_registry.json', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        iconRegistry = data.icons || data || {};
+    } catch (_) { iconRegistry = {}; }
+}
+
+function resolveIconUrl(iconName) {
+    const entry = iconRegistry[iconName];
+    if (entry) {
+        const raw = typeof entry === 'string' ? entry : (entry.url || entry.path || entry.file || entry.filename);
+        if (raw) return raw.startsWith('/') || raw.startsWith('http') || raw.startsWith('data:') ? raw : `/static/icons/${raw}`;
+    }
+    return getIconUri(iconName);
+}
 
 // Initialize Page
-document.addEventListener("DOMContentLoaded", () => {
+// Wait for the official icon registry before rendering diagrams so static vendor assets win over fallback SVGs.
+document.addEventListener("DOMContentLoaded", async () => {
     lucide.createIcons();
     initTabs();
     initAuthStatus();
     initCanvas();
+    await loadIconRegistry();
+    await loadCustomIcons();
     loadProjects();
-    loadCustomIcons();
     populateToolbox();
     setupFormListeners();
     setupSelectionListeners();
@@ -309,246 +330,174 @@ function canvasZoomIn() { cy.zoom(cy.zoom() * 1.2); }
 function canvasZoomOut() { cy.zoom(cy.zoom() * 0.8); }
 function canvasFit() { cy.fit(cy.elements(), 50); }
 
-// Phase 5.2.2 — Visual Composition, Boundary Collision Prevention & Connector Label Engine
-// Known architecture patterns own final coordinates. Generic layout is fallback only.
+// FINAL ARCHITECTURE LAYOUT ENGINE
+// Design principle: semantic graph -> layers -> ordering -> zones -> routing.
+// There are no hard-coded coordinates for a vendor or prompt. Pattern rules are constraints,
+// not separate brittle templates.
 function inferPatternFromCanvas() {
     const explicit = String(cy.data('pattern') || '').toLowerCase();
-    if (explicit && explicit !== 'generic' && explicit !== 'unknown') return explicit;
-    const nodes = cy.nodes().filter(n => n.data('type') !== 'group');
-    const text = nodes.map(n => [n.data('label'), n.data('category'), n.data('role'), n.data('icon')].filter(Boolean).join(' ')).join(' ').toLowerCase();
-    if (/saviynt|identity governance|\biga\b|\biam\b|active directory|entra|okta|scim/.test(text)) return 'iam';
-    if (/kafka|rabbitmq|pubsub|service bus|event/.test(text)) return 'event_driven';
-    if (/ingestion|warehouse|etl|pipeline|transform|bigquery/.test(text)) return 'data_pipeline';
-    if (/kubernetes|microservice|api gateway/.test(text)) return 'microservices';
-    if (/direct connect|expressroute|\bon-prem\b|hybrid/.test(text)) return 'hybrid_cloud';
+    if (explicit && !['generic','unknown'].includes(explicit)) return explicit;
+    const text = cy.nodes().filter(n => n.data('type') !== 'group' && n.data('type') !== 'layout_zone')
+        .map(n => [n.data('label'),n.data('category'),n.data('role'),n.data('icon')].filter(Boolean).join(' ')).join(' ').toLowerCase();
+    if (/saviynt|identity governance|\biga\b|\biam\b|active directory|entra|okta|scim|ldap/.test(text)) return 'iam';
+    if (/kafka|rabbitmq|pubsub|service bus|event bus|event-driven/.test(text)) return 'event_driven';
+    if (/ingest|etl|pipeline|warehouse|lakehouse|transform|bigquery/.test(text)) return 'data_pipeline';
+    if (/kubernetes|microservice|api gateway|service mesh/.test(text)) return 'microservices';
+    if (/direct connect|expressroute|on-prem|hybrid cloud|vpn/.test(text)) return 'hybrid_cloud';
+    if (/(load balancer|alb|application gateway|web tier)/.test(text) && /(rds|database|sql|data tier)/.test(text)) return 'three_tier';
     return 'generic';
 }
 
 function nodeText(n) {
-    return [n.data('label'), n.data('category'), n.data('role'), n.data('provider'), n.data('icon')]
+    return [n.data('label'),n.data('category'),n.data('role'),n.data('provider'),n.data('icon')]
         .filter(Boolean).join(' ').toLowerCase();
 }
 
-function semanticRole(n) {
-    const explicit = String(n.data('role') || '').toLowerCase();
+function semanticRole(n, pattern='generic') {
+    const explicit=String(n.data('role')||'').toLowerCase();
+    const t=nodeText(n);
     if (explicit && explicit !== 'peer_service') return explicit;
-    const t = nodeText(n);
     if (/saviynt/.test(t)) return 'primary_component';
-    if (/active directory|ldap/.test(t)) return 'identity_source';
+    if (/active directory|\bldap\b/.test(t)) return 'identity_source';
     if (/entra|okta|identity provider|azure active directory/.test(t)) return 'identity_provider';
-    if (/user|employee|admin|browser|client/.test(t)) return 'external_actor';
-    if (/servicenow|salesforce|workday|aws iam|application/.test(t)) return 'target_application';
+    if (/kafka|rabbitmq|pubsub|service bus|event bus/.test(t)) return 'event_backbone';
+    if (/user|employee|customer|admin|browser|mobile app|client/.test(t)) return 'external_actor';
+    if (pattern==='iam' && /servicenow|salesforce|workday|aws iam|application/.test(t)) return 'target_application';
+    if (/api gateway|load balancer|cloudfront|ingress/.test(t)) return 'entry_point';
+    if (/database|rds|sql|warehouse|storage|s3|gcs/.test(t)) return 'data_store';
     return explicit || 'peer_service';
 }
 
-function ensureSyntheticGroup(id, label, groupType) {
-    let g = cy.getElementById(id);
-    if (!g.length) {
-        cy.add({ data: { id, label, type: 'group', group_type: groupType, role: 'layout_zone', synthetic: true } });
-        g = cy.getElementById(id);
-    }
-    return g;
+function clearLayoutArtifacts() {
+    cy.nodes().filter(n => n.data('type')==='layout_zone' || n.data('synthetic')===true).remove();
 }
 
-function clearSyntheticGroups() {
-    cy.nodes().filter(n => n.data('synthetic') === true).remove();
-}
-
-function setZone(nodes, zoneId, zoneLabel, zoneType) {
-    if (!nodes.length) return;
-    ensureSyntheticGroup(zoneId, zoneLabel, zoneType);
-    nodes.forEach(n => n.move({ parent: zoneId }));
-}
-
-function positionColumn(list, x, centerY, spacing = 115) {
-    const sorted = [...list].sort((a,b) => String(a.data('label')).localeCompare(String(b.data('label'))));
-    const start = centerY - ((sorted.length - 1) * spacing) / 2;
-    sorted.forEach((n, i) => n.position({ x, y: start + i * spacing }));
-}
-
-function positionRow(list, centerX, y, spacing = 185) {
-    const sorted = [...list].sort((a,b) => String(a.data('label')).localeCompare(String(b.data('label'))));
-    const start = centerX - ((sorted.length - 1) * spacing) / 2;
-    sorted.forEach((n, i) => n.position({ x: start + i * spacing, y }));
-}
-
-function setNodeVisualHierarchy(nodes) {
+function setVisualHierarchy(nodes, pattern) {
     nodes.forEach(n => {
-        const role = semanticRole(n);
-        n.data('role', role);
-        const primary = role === 'primary_component' || String(n.data('importance')).toLowerCase() === 'primary';
-        n.data('importance', primary ? 'primary' : 'normal');
-        if (primary) {
-            n.style({ width: 150, height: 108, 'border-width': 4, 'font-size': 13, 'font-weight': 700, 'text-max-width': 160 });
-        } else if (role === 'identity_provider') {
-            n.style({ width: 82, height: 82, 'border-width': 3, 'font-size': 11 });
-        } else {
-            n.style({ width: 62, height: 62, 'border-width': 2, 'font-size': 10 });
-        }
+        const role=semanticRole(n,pattern);
+        const primary=role==='primary_component' || String(n.data('importance')||'').toLowerCase()==='primary';
+        n.data('role',role); n.data('importance',primary?'primary':'normal');
+        if (primary) n.style({width:132,height:92,'border-width':3,'font-size':12,'font-weight':700,'background-width':'50%','background-height':'50%','text-max-width':155});
+        else if (role==='event_backbone') n.style({width:90,height:72,'border-width':3,'font-size':11,'font-weight':700});
+        else if (role==='identity_provider') n.style({width:72,height:72,'border-width':3,'font-size':10});
+        else n.style({width:60,height:60,'border-width':2,'font-size':10,'font-weight':500});
     });
 }
 
-function removeEmptyIAMBoundaries() {
-    // IAM templates own their visual zones. Remove old, empty/ambiguous boundaries that create overlaps.
-    cy.nodes('[type = "group"]').filter(g => g.data('synthetic') !== true).forEach(g => {
-        const children = g.children();
-        if (!children.length || /aws cloud|vpc|subnet|applications|identity/i.test(String(g.data('label') || ''))) {
-            children.forEach(c => c.move({ parent: null }));
-            g.remove();
-        }
-    });
+function roleRank(role, pattern) {
+    const iam={external_actor:0,identity_source:1,identity_provider:2,primary_component:3,target_application:4};
+    const event={external_actor:0,entry_point:0,event_producer:1,event_backbone:2,event_consumer:3,data_store:4};
+    const pipeline={external_actor:0,source:0,entry_point:1,ingestion:1,processing:2,transformation:2,data_store:3,analytics:4};
+    const micro={external_actor:0,entry_point:1,primary_component:2,peer_service:2,data_store:3};
+    const map=pattern==='iam'?iam:pattern==='event_driven'?event:pattern==='data_pipeline'?pipeline:pattern==='microservices'?micro:{};
+    return Object.prototype.hasOwnProperty.call(map,role)?map[role]:null;
 }
 
-function rebuildCompoundBounds() {
-    const groups = cy.nodes('[type = "group"]');
-    const realNodes = cy.nodes().filter(n => n.data('type') !== 'group');
-    if (!groups.length) return;
-
-    const groupParents = new Map(groups.map(g => [g.id(), g.data('parent') || null]));
-    const nodeParents = new Map(realNodes.map(n => [n.id(), n.data('parent') || null]));
-    groups.forEach(g => g.move({ parent: null }));
-    realNodes.forEach(n => n.move({ parent: null }));
-
-    const depth = g => {
-        let d = 0, p = groupParents.get(g.id());
-        while (p) { d += 1; p = groupParents.get(p); }
-        return d;
-    };
-
-    groups.sort((a,b) => depth(b) - depth(a)).forEach(g => {
-        const childNodes = realNodes.filter(n => nodeParents.get(n.id()) === g.id());
-        const childGroups = groups.filter(x => groupParents.get(x.id()) === g.id());
-        childNodes.union(childGroups).forEach(c => c.move({ parent: g.id() }));
-    });
+function graphRanks(nodes, edges, pattern) {
+    const ids=new Set(nodes.map(n=>n.id()));
+    const incoming=new Map(nodes.map(n=>[n.id(),0]));
+    const outgoing=new Map(nodes.map(n=>[n.id(),[]]));
+    edges.forEach(e=>{if(ids.has(e.source().id())&&ids.has(e.target().id())){incoming.set(e.target().id(),incoming.get(e.target().id())+1);outgoing.get(e.source().id()).push(e.target().id());}});
+    const q=nodes.filter(n=>incoming.get(n.id())===0).map(n=>n.id());
+    const topo=[]; const rank=new Map(nodes.map(n=>[n.id(),0]));
+    while(q.length){const id=q.shift();topo.push(id);for(const t of outgoing.get(id)){rank.set(t,Math.max(rank.get(t),rank.get(id)+1));incoming.set(t,incoming.get(t)-1);if(incoming.get(t)===0)q.push(t);}}
+    // Cycles are common in architecture. Put unresolved nodes in a stable layer instead of failing.
+    nodes.forEach(n=>{if(!topo.includes(n.id())) topo.push(n.id());});
+    nodes.forEach(n=>{const rr=roleRank(semanticRole(n,pattern),pattern);if(rr!==null)rank.set(n.id(),rr);});
+    // Normalize generic graph depth while respecting explicit layer when supplied.
+    if(pattern==='generic'||pattern==='hybrid_cloud'||pattern==='three_tier') nodes.forEach(n=>{const explicit=Number(n.data('layer'));if(Number.isFinite(explicit))rank.set(n.id(),explicit);});
+    return rank;
 }
 
-function styleZonesForPattern(pattern) {
-    cy.nodes('[type = "group"]').forEach(g => {
-        if (g.data('synthetic') === true) {
-            g.style({
-                padding: 42,
-                'border-style': 'solid',
-                'border-width': 2,
-                'border-color': '#4a78ff',
-                'background-color': 'rgba(91, 140, 255, 0.055)',
-                'font-size': 12,
-                'font-weight': 700,
-                'text-margin-y': '-14px'
-            });
-        }
-    });
-}
-
-function styleEdgesForPattern(pattern) {
-    const labelOffsets = [-18, 18, -30, 30, 0];
-    cy.edges().forEach((e, index) => {
-        const kind = String(e.data('kind') || 'sync').toLowerCase();
-        const direction = String(e.data('direction') || 'forward').toLowerCase();
-        const isIAM = pattern === 'iam';
-        const style = {
-            'curve-style': 'taxi',
-            'taxi-direction': isIAM ? 'downward' : 'rightward',
-            'taxi-turn': isIAM ? '38%' : '45%',
-            'taxi-turn-min-distance': isIAM ? 42 : 30,
-            'target-arrow-shape': 'triangle',
-            'source-arrow-shape': direction === 'bidirectional' ? 'triangle' : 'none',
-            'line-style': kind === 'async' ? 'dashed' : 'solid',
-            'width': kind === 'auth' || kind === 'control' ? 3 : 2,
-            'text-background-opacity': 0.94,
-            'text-background-padding': 4,
-            'text-margin-x': isIAM ? labelOffsets[index % labelOffsets.length] : 0,
-            'text-margin-y': -10,
-            'text-max-width': 135
-        };
-        if (kind === 'auth') Object.assign(style, { 'line-color': '#4a78ff', 'target-arrow-color': '#4a78ff' });
-        else if (kind === 'async') Object.assign(style, { 'line-color': '#a56eff', 'target-arrow-color': '#a56eff' });
-        else if (kind === 'data') Object.assign(style, { 'line-color': '#36b37e', 'target-arrow-color': '#36b37e' });
-        else Object.assign(style, { 'line-color': '#64748b', 'target-arrow-color': '#64748b' });
-        e.style(style);
-    });
-}
-
-function applyIAMTemplate(nodes) {
-    // Phase 5.2.2: true flow-first architecture lanes. No generic layout may reposition these nodes.
-    removeEmptyIAMBoundaries();
-    const byRole = role => nodes.filter(n => semanticRole(n) === role);
-    const users = byRole('external_actor');
-    const sources = byRole('identity_source');
-    const idp = byRole('identity_provider');
-    const primary = byRole('primary_component');
-    const targets = byRole('target_application');
-    const known = new Set([...users, ...sources, ...idp, ...primary, ...targets].map(n => n.id()));
-    const otherTargets = nodes.filter(n => !known.has(n.id()));
-    const allTargets = [...targets, ...otherTargets];
-
-    setNodeVisualHierarchy(nodes);
-    allTargets.forEach(n => n.data('peerGroup', 'target_application'));
-
-    // Compact vertical spine. Every lane is intentional and read top -> bottom.
-    const cx = 600;
-    positionRow(users, cx, 80, 150);
-    positionRow(sources, cx, 230, 180);
-    positionRow(idp, cx, 410, 180);
-    positionRow(primary, cx, 600, 220);
-
-    const targetSpacing = allTargets.length <= 3 ? 230 : 185;
-    positionRow(allTargets, cx, 820, targetSpacing);
-
-    // Zone boundaries use generous internal padding and never nest unnecessarily.
-    setZone([...sources], '__zone_onprem', 'ON-PREMISES', 'trustZone');
-    setZone([...idp, ...primary], '__zone_identity', 'IDENTITY & IGA CLOUD', 'trustZone');
-    setZone(allTargets, '__zone_targets', 'TARGET APPLICATIONS', 'trustZone');
-}
-
-function applyHubAndSpokeTemplate(nodes, hub) {
-    const peers = nodes.filter(n => n.id() !== hub.id());
-    hub.position({ x: 540, y: 360 });
-    const radiusX = 320, radiusY = 210;
-    peers.forEach((n, i) => {
-        const angle = (Math.PI * 2 * i) / Math.max(peers.length, 1) - Math.PI / 2;
-        n.position({ x: 540 + Math.cos(angle) * radiusX, y: 360 + Math.sin(angle) * radiusY });
-    });
-}
-
-function applyGenericTemplate(nodes) {
-    const columns = new Map();
-    nodes.forEach(n => {
-        const layer = Number.isFinite(Number(n.data('layer'))) ? Number(n.data('layer')) : 3;
-        if (!columns.has(layer)) columns.set(layer, []);
-        columns.get(layer).push(n);
-    });
-    [...columns.keys()].sort((a,b) => a-b).forEach((layer, i) => positionColumn(columns.get(layer), 140 + i * 220, 360, 115));
-}
-
-function applyAdaptiveViewport(pattern) {
-    const padding = pattern === 'iam' ? 95 : 65;
-    cy.fit(cy.elements(), padding);
-}
-
-function canvasAutoLayout(dsl = {}) {
-    if (!cy) return;
-    const nodes = cy.nodes().filter(n => n.data('type') !== 'group');
-    if (!nodes.length) return;
-
-    clearSyntheticGroups();
-    const explicit = String(dsl.pattern || cy.data('pattern') || '').toLowerCase();
-    const pattern = explicit && explicit !== 'generic' && explicit !== 'unknown' ? explicit : inferPatternFromCanvas();
-    cy.data('pattern', pattern);
-    cy.scratch('architecturePattern', pattern);
-
-    if (pattern === 'iam') {
-        applyIAMTemplate(nodes);
-    } else if (pattern === 'event_driven') {
-        const hub = nodes.find(n => semanticRole(n) === 'event_backbone' || /kafka|rabbitmq|pubsub|service bus/.test(nodeText(n)));
-        hub ? applyHubAndSpokeTemplate(nodes, hub) : applyGenericTemplate(nodes);
-    } else {
-        applyGenericTemplate(nodes);
+function orderLayers(nodes, edges, rank) {
+    const layers=new Map(); nodes.forEach(n=>{const r=rank.get(n.id())||0;if(!layers.has(r))layers.set(r,[]);layers.get(r).push(n);});
+    const neighbors=(n,previous)=>edges.filter(e=>previous?e.target().id()===n.id():e.source().id()===n.id()).map(e=>previous?e.source().id():e.target().id());
+    const sortedRanks=[...layers.keys()].sort((a,b)=>a-b);
+    // Barycentric forward/backward sweeps reduce edge crossings without external layout dependencies.
+    for(let pass=0;pass<3;pass++){
+      sortedRanks.forEach((r,idx)=>{if(!idx)return;const prev=layers.get(sortedRanks[idx-1]);const pos=new Map(prev.map((n,i)=>[n.id(),i]));layers.get(r).sort((a,b)=>{const av=neighbors(a,true).map(x=>pos.get(x)).filter(x=>x!==undefined);const bv=neighbors(b,true).map(x=>pos.get(x)).filter(x=>x!==undefined);const aa=av.length?av.reduce((x,y)=>x+y,0)/av.length:999;const bb=bv.length?bv.reduce((x,y)=>x+y,0)/bv.length:999;return aa-bb||String(a.data('label')).localeCompare(String(b.data('label')));});});
+      [...sortedRanks].reverse().forEach((r,idx)=>{if(!idx)return;const next=layers.get([...sortedRanks].reverse()[idx-1]);const pos=new Map(next.map((n,i)=>[n.id(),i]));layers.get(r).sort((a,b)=>{const av=neighbors(a,false).map(x=>pos.get(x)).filter(x=>x!==undefined);const bv=neighbors(b,false).map(x=>pos.get(x)).filter(x=>x!==undefined);const aa=av.length?av.reduce((x,y)=>x+y,0)/av.length:999;const bb=bv.length?bv.reduce((x,y)=>x+y,0)/bv.length:999;return aa-bb||String(a.data('label')).localeCompare(String(b.data('label')));});});
     }
+    return layers;
+}
 
-    rebuildCompoundBounds();
-    styleZonesForPattern(pattern);
-    styleEdgesForPattern(pattern);
-    applyAdaptiveViewport(pattern);
+function chooseOrientation(pattern, layers) {
+    if(['iam','data_pipeline'].includes(pattern)) return 'vertical';
+    if(pattern==='event_driven'||pattern==='microservices'||pattern==='three_tier') return 'horizontal';
+    const max=Math.max(...[...layers.values()].map(x=>x.length),1); return max>=4?'vertical':'horizontal';
+}
+
+function placeLayers(layers, orientation) {
+    const ranks=[...layers.keys()].sort((a,b)=>a-b);
+    const center=orientation==='vertical'?560:430;
+    ranks.forEach((r,ri)=>{
+      const list=layers.get(r); const spacing=orientation==='vertical'?Math.max(150,Math.min(230,760/Math.max(list.length,1))):120;
+      const axis=orientation==='vertical'?130+ri*175:150+ri*210;
+      const start=center-((list.length-1)*spacing)/2;
+      list.forEach((n,i)=>orientation==='vertical'?n.position({x:start+i*spacing,y:axis}):n.position({x:axis,y:start+i*spacing}));
+    });
+}
+
+function zoneForNode(n, pattern) {
+    const provider=String(n.data('provider')||'').toLowerCase(); const t=nodeText(n); const role=semanticRole(n,pattern);
+    if(pattern==='iam'){
+      if(role==='identity_source'||/on.?prem/.test(t)) return {id:'zone_onprem',label:'ON-PREMISES'};
+      if(role==='identity_provider'||role==='primary_component') return {id:'zone_identity',label:'IDENTITY & GOVERNANCE'};
+      if(role==='target_application') return {id:'zone_targets',label:'TARGET SYSTEMS'};
+    }
+    if(provider==='aws'||/^aws-/.test(String(n.data('icon')||''))) return {id:'zone_aws',label:'AWS CLOUD'};
+    if(provider==='azure'||/^azure-/.test(String(n.data('icon')||''))) return {id:'zone_azure',label:'AZURE CLOUD'};
+    if(provider==='gcp'||/^gcp-/.test(String(n.data('icon')||''))) return {id:'zone_gcp',label:'GOOGLE CLOUD'};
+    if(provider==='onprem'||/on.?prem/.test(t)) return {id:'zone_onprem',label:'ON-PREMISES'};
+    if(provider==='saas') return {id:'zone_saas',label:'SAAS / EXTERNAL SYSTEMS'};
+    return null;
+}
+
+function createBackgroundZones(nodes, pattern) {
+    const buckets=new Map();
+    const explicit=cy.data('explicitGroups') || [];
+    explicit.forEach(g=>{
+        const members=nodes.filter(n=>n.data('boundaryParent')===g.id);
+        if(members.length) buckets.set('explicit_'+g.id,{id:'explicit_'+g.id,label:g.label || g.id,nodes:members,explicit:true});
+    });
+    nodes.forEach(n=>{const z=zoneForNode(n,pattern);if(z){if(!buckets.has(z.id))buckets.set(z.id,{...z,nodes:[]});buckets.get(z.id).nodes.push(n);}});
+    buckets.forEach(z=>{
+      const bb=z.nodes.reduce((acc,n)=>acc?acc.union(n.boundingBox()):n.boundingBox(),null); if(!bb)return;
+      const pad=pattern==='iam'?55:42; const zone=cy.add({data:{id:'__'+z.id,label:z.label,type:'layout_zone',synthetic:true},position:{x:bb.x1+bb.w/2,y:bb.y1+bb.h/2}});
+      zone.style({width:Math.max(180,bb.w+pad*2),height:Math.max(125,bb.h+pad*2),'background-color':'#151a24','background-opacity':0.78,'border-color':'#475569','border-width':1.5,'border-style':'dashed','shape':'roundrectangle','label':z.label,'color':'#94a3b8','font-size':11,'font-weight':700,'text-valign':'top','text-margin-y':-10,'background-image':'none','z-index':-10});
+    });
+}
+
+function routeEdges(pattern, orientation) {
+    cy.edges().forEach((e,i)=>{
+      const s=e.source(),t=e.target(); const kind=String(e.data('kind')||'sync').toLowerCase();
+      const sameRank=Math.abs((s.position('x')-t.position('x'))+(s.position('y')-t.position('y')))===0;
+      e.style({'curve-style':'taxi','taxi-direction':orientation==='vertical'?'downward':'rightward','taxi-turn':'45%','taxi-turn-min-distance':45,'source-endpoint':'outside-to-node','target-endpoint':'outside-to-node','target-arrow-shape':'triangle','source-arrow-shape':String(e.data('direction')||'')==='bidirectional'?'triangle':'none','width':kind==='control'||kind==='auth'?2.6:1.8,'line-style':kind==='async'?'dashed':'solid','text-background-opacity':0.95,'text-background-color':'#0b0f16','text-background-padding':3,'text-margin-y':i%2?12:-12,'text-max-width':110,'font-size':9});
+      const color=kind==='async'?'#a56eff':kind==='data'?'#36b37e':kind==='auth'?'#5b8cff':'#64748b'; e.style({'line-color':color,'target-arrow-color':color,'source-arrow-color':color});
+    });
+}
+
+function applyRealGroups() {
+    // Explicit groups are represented by background zones. No compound reparenting is performed.
+    return cy.data('explicitGroups') || [];
+}
+
+function canvasAutoLayout(dsl={}) {
+    if(!cy)return;
+    clearLayoutArtifacts();
+    const nodes=cy.nodes().filter(n=>!['group','layout_zone'].includes(n.data('type')));
+    if(!nodes.length)return;
+    const pattern=String(dsl.pattern||cy.data('pattern')||inferPatternFromCanvas()).toLowerCase();
+    cy.data('pattern',pattern);
+    setVisualHierarchy(nodes,pattern);
+    // Do not use compound parenting for automatic zones; it causes coordinate shifts and overlap.
+    applyRealGroups(nodes);
+    const edges=cy.edges(); const ranks=graphRanks(nodes,edges,pattern); const layers=orderLayers(nodes,edges,ranks); const orientation=chooseOrientation(pattern,layers);
+    placeLayers(layers,orientation);
+    createBackgroundZones(nodes,pattern);
+    routeEdges(pattern,orientation);
+    cy.nodes('[type="layout_zone"]').lock();
+    cy.fit(cy.elements(),70);
 }
 
 // Project Logic
@@ -667,26 +616,14 @@ function renderTopology(dsl) {
     
     const elements = [];
     
-    // Add groups
-    if (dsl.groups) {
-        dsl.groups.forEach(g => {
-            elements.push({
-                data: {
-                    id: g.id,
-                    label: g.label,
-                    type: 'group',
-                    group_type: g.type,
-                    parent: g.parentId || undefined,
-                    role: g.role || 'boundary'
-                }
-            });
-        });
-    }
+    // Real boundaries are rendered as background zones, not Cytoscape compound nodes.
+    // Compound parenting was the source of coordinate shifts and overlapping boxes in earlier phases.
+    cy.data('explicitGroups', Array.isArray(dsl.groups) ? dsl.groups : []);
     
     // Add nodes
     if (dsl.nodes) {
         dsl.nodes.forEach(n => {
-            let iconUrl = getIconUri(n.data.icon);
+            let iconUrl = resolveIconUrl(n.data.icon);
             if (!iconUrl) {
                 // Check if it's a custom icon
                 const customIcon = customIcons.find(ci => ci.tag === n.data.icon);
@@ -697,10 +634,11 @@ function renderTopology(dsl) {
                 data: {
                     id: n.id,
                     label: n.data.label,
-                    parent: n.parentId || undefined,
+                    parent: undefined,
+                    boundaryParent: n.parentId || null,
                     type: n.type,
                     icon: n.data.icon,
-                    icon_url: iconUrl || getIconUri('server'),
+                    icon_url: iconUrl || resolveIconUrl('server'),
                     category: n.data.category,
                     layer: n.data.layer,
                     provider: n.data.provider,
@@ -734,17 +672,21 @@ function renderTopology(dsl) {
     
     cy.add(elements);
     cy.data('pattern', dsl.pattern || 'generic');
-    canvasAutoLayout();
+    canvasAutoLayout(dsl);
 }
 
 // Generate topology back to DSL format for storage / refinement
 function exportTopologyJSON() {
     const nodes = [];
-    const groups = [];
+    const groups = (cy.data('explicitGroups') || []).map(g => ({ id:g.id, label:g.label, type:g.type || 'generic', parentId:g.parentId || null, role:g.role || 'boundary' }));
     const edges = [];
     
     cy.nodes().forEach(ele => {
+        if (ele.data('type') === 'layout_zone') {
+            return;
+        }
         if (ele.data('type') === 'group') {
+            return;
             groups.push({
                 id: ele.id(),
                 label: ele.data('label'),
@@ -756,7 +698,7 @@ function exportTopologyJSON() {
             nodes.push({
                 id: ele.id(),
                 type: ele.data('type') || 'cloudIcon',
-                parentId: ele.data('parent') || null,
+                parentId: ele.data('boundaryParent') || ele.data('parent') || null,
                 data: {
                     label: ele.data('label'),
                     icon: ele.data('icon') || 'server',
@@ -1073,7 +1015,7 @@ function addCanvasNode(iconName) {
             parent,
             type: 'cloudIcon',
             icon: iconName,
-            icon_url: iconUrl || getIconUri('server'),
+            icon_url: iconUrl || resolveIconUrl('server'),
             category: 'general',
             description: ''
         },
@@ -1232,7 +1174,7 @@ function updateSelectedNode() {
     const parent = document.getElementById("inspect-node-parent").value || undefined;
     const desc = document.getElementById("inspect-node-desc").value.trim();
     
-    let iconUrl = getIconUri(icon);
+    let iconUrl = resolveIconUrl(icon);
     if (!iconUrl) {
         const custom = customIcons.find(ci => ci.tag === icon);
         if (custom) iconUrl = custom.url;
@@ -1242,7 +1184,7 @@ function updateSelectedNode() {
         label,
         icon,
         parent,
-        icon_url: iconUrl || getIconUri('server'),
+        icon_url: iconUrl || resolveIconUrl('server'),
         description: desc
     });
     

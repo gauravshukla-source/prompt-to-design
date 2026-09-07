@@ -250,12 +250,17 @@ function initCanvas() {
                     'text-background-opacity': 0.85,
                     'text-background-color': '#0c0c0e',
                     'text-background-padding': '3px',
-                    'text-background-shape': 'roundrectangle'
+                    'text-background-shape': 'roundrectangle',
+                    'text-border-width': 0,
+                    'text-rotation': 'none',
+                    'text-margin-y': '-8px',
+                    'text-wrap': 'wrap',
+                    'text-max-width': '125px'
                 }
             },
             {
                 selector: 'node[importance = "primary"]',
-                style: { 'width':'72px', 'height':'72px', 'border-width':'3px', 'border-color':'#5b8cff', 'font-size':'11px' }
+                style: { 'width':'150px', 'height':'108px', 'border-width':'4px', 'border-color':'#5b8cff', 'font-size':'13px', 'font-weight':'700', 'background-width':'48%', 'background-height':'48%', 'text-max-width':'150px' }
             },
             {
                 selector: 'node[role = "peer_service"]',
@@ -304,8 +309,8 @@ function canvasZoomIn() { cy.zoom(cy.zoom() * 1.2); }
 function canvasZoomOut() { cy.zoom(cy.zoom() * 0.8); }
 function canvasFit() { cy.fit(cy.elements(), 50); }
 
-// Phase 5.2.1 — Template Authority & Architecture Zones
-// IMPORTANT: known architecture patterns own final coordinates. Generic layout is fallback only.
+// Phase 5.2.2 — Visual Composition, Boundary Collision Prevention & Connector Label Engine
+// Known architecture patterns own final coordinates. Generic layout is fallback only.
 function inferPatternFromCanvas() {
     const explicit = String(cy.data('pattern') || '').toLowerCase();
     if (explicit && explicit !== 'generic' && explicit !== 'unknown') return explicit;
@@ -355,14 +360,6 @@ function setZone(nodes, zoneId, zoneLabel, zoneType) {
     nodes.forEach(n => n.move({ parent: zoneId }));
 }
 
-function setNodeSizeByImportance(nodes) {
-    nodes.forEach(n => {
-        const importance = n.data('importance') || (semanticRole(n) === 'primary_component' ? 'primary' : 'normal');
-        if (importance === 'primary') n.style({ width: 96, height: 96, 'border-width': 4 });
-        else n.style({ width: 58, height: 58 });
-    });
-}
-
 function positionColumn(list, x, centerY, spacing = 115) {
     const sorted = [...list].sort((a,b) => String(a.data('label')).localeCompare(String(b.data('label'))));
     const start = centerY - ((sorted.length - 1) * spacing) / 2;
@@ -375,6 +372,33 @@ function positionRow(list, centerX, y, spacing = 185) {
     sorted.forEach((n, i) => n.position({ x: start + i * spacing, y }));
 }
 
+function setNodeVisualHierarchy(nodes) {
+    nodes.forEach(n => {
+        const role = semanticRole(n);
+        n.data('role', role);
+        const primary = role === 'primary_component' || String(n.data('importance')).toLowerCase() === 'primary';
+        n.data('importance', primary ? 'primary' : 'normal');
+        if (primary) {
+            n.style({ width: 150, height: 108, 'border-width': 4, 'font-size': 13, 'font-weight': 700, 'text-max-width': 160 });
+        } else if (role === 'identity_provider') {
+            n.style({ width: 82, height: 82, 'border-width': 3, 'font-size': 11 });
+        } else {
+            n.style({ width: 62, height: 62, 'border-width': 2, 'font-size': 10 });
+        }
+    });
+}
+
+function removeEmptyIAMBoundaries() {
+    // IAM templates own their visual zones. Remove old, empty/ambiguous boundaries that create overlaps.
+    cy.nodes('[type = "group"]').filter(g => g.data('synthetic') !== true).forEach(g => {
+        const children = g.children();
+        if (!children.length || /aws cloud|vpc|subnet|applications|identity/i.test(String(g.data('label') || ''))) {
+            children.forEach(c => c.move({ parent: null }));
+            g.remove();
+        }
+    });
+}
+
 function rebuildCompoundBounds() {
     const groups = cy.nodes('[type = "group"]');
     const realNodes = cy.nodes().filter(n => n.data('type') !== 'group');
@@ -382,7 +406,6 @@ function rebuildCompoundBounds() {
 
     const groupParents = new Map(groups.map(g => [g.id(), g.data('parent') || null]));
     const nodeParents = new Map(realNodes.map(n => [n.id(), n.data('parent') || null]));
-
     groups.forEach(g => g.move({ parent: null }));
     realNodes.forEach(n => n.move({ parent: null }));
 
@@ -395,26 +418,47 @@ function rebuildCompoundBounds() {
     groups.sort((a,b) => depth(b) - depth(a)).forEach(g => {
         const childNodes = realNodes.filter(n => nodeParents.get(n.id()) === g.id());
         const childGroups = groups.filter(x => groupParents.get(x.id()) === g.id());
-        const children = childNodes.union(childGroups);
-        if (children.length) {
-            children.forEach(c => c.move({ parent: g.id() }));
+        childNodes.union(childGroups).forEach(c => c.move({ parent: g.id() }));
+    });
+}
+
+function styleZonesForPattern(pattern) {
+    cy.nodes('[type = "group"]').forEach(g => {
+        if (g.data('synthetic') === true) {
+            g.style({
+                padding: 42,
+                'border-style': 'solid',
+                'border-width': 2,
+                'border-color': '#4a78ff',
+                'background-color': 'rgba(91, 140, 255, 0.055)',
+                'font-size': 12,
+                'font-weight': 700,
+                'text-margin-y': '-14px'
+            });
         }
     });
 }
 
 function styleEdgesForPattern(pattern) {
-    cy.edges().forEach(e => {
+    const labelOffsets = [-18, 18, -30, 30, 0];
+    cy.edges().forEach((e, index) => {
         const kind = String(e.data('kind') || 'sync').toLowerCase();
         const direction = String(e.data('direction') || 'forward').toLowerCase();
+        const isIAM = pattern === 'iam';
         const style = {
             'curve-style': 'taxi',
-            'taxi-direction': pattern === 'iam' ? 'downward' : 'rightward',
-            'taxi-turn': '45%',
-            'taxi-turn-min-distance': 30,
+            'taxi-direction': isIAM ? 'downward' : 'rightward',
+            'taxi-turn': isIAM ? '38%' : '45%',
+            'taxi-turn-min-distance': isIAM ? 42 : 30,
             'target-arrow-shape': 'triangle',
             'source-arrow-shape': direction === 'bidirectional' ? 'triangle' : 'none',
             'line-style': kind === 'async' ? 'dashed' : 'solid',
-            'width': kind === 'auth' || kind === 'control' ? 3 : 2
+            'width': kind === 'auth' || kind === 'control' ? 3 : 2,
+            'text-background-opacity': 0.94,
+            'text-background-padding': 4,
+            'text-margin-x': isIAM ? labelOffsets[index % labelOffsets.length] : 0,
+            'text-margin-y': -10,
+            'text-max-width': 135
         };
         if (kind === 'auth') Object.assign(style, { 'line-color': '#4a78ff', 'target-arrow-color': '#4a78ff' });
         else if (kind === 'async') Object.assign(style, { 'line-color': '#a56eff', 'target-arrow-color': '#a56eff' });
@@ -425,38 +469,35 @@ function styleEdgesForPattern(pattern) {
 }
 
 function applyIAMTemplate(nodes) {
-    // Template Authority: no generic layout may reposition these nodes afterwards.
+    // Phase 5.2.2: true flow-first architecture lanes. No generic layout may reposition these nodes.
+    removeEmptyIAMBoundaries();
     const byRole = role => nodes.filter(n => semanticRole(n) === role);
     const users = byRole('external_actor');
     const sources = byRole('identity_source');
     const idp = byRole('identity_provider');
     const primary = byRole('primary_component');
     const targets = byRole('target_application');
-    const used = new Set([...users, ...sources, ...idp, ...primary, ...targets].map(n => n.id()));
-    const otherTargets = nodes.filter(n => !used.has(n.id()));
+    const known = new Set([...users, ...sources, ...idp, ...primary, ...targets].map(n => n.id()));
+    const otherTargets = nodes.filter(n => !known.has(n.id()));
     const allTargets = [...targets, ...otherTargets];
 
-    nodes.forEach(n => {
-        n.data('role', semanticRole(n));
-        if (semanticRole(n) === 'primary_component') n.data('importance', 'primary');
-        if (semanticRole(n) === 'target_application') n.data('peerGroup', 'target_application');
-    });
-    setNodeSizeByImportance(nodes);
+    setNodeVisualHierarchy(nodes);
+    allTargets.forEach(n => n.data('peerGroup', 'target_application'));
 
-    // Horizontal zone progression with a vertical identity/IGA spine inside the identity zone.
-    const centerY = 390;
-    positionColumn(users, 120, 250, 95);
-    positionColumn(sources, 250, 390, 115);
-    positionColumn(idp, 500, 250, 100);
-    positionColumn(primary, 500, 510, 120);
-    positionRow(allTargets, 850, 390, 180);
+    // Compact vertical spine. Every lane is intentional and read top -> bottom.
+    const cx = 600;
+    positionRow(users, cx, 80, 150);
+    positionRow(sources, cx, 230, 180);
+    positionRow(idp, cx, 410, 180);
+    positionRow(primary, cx, 600, 220);
 
-    // Strict zone ownership. Synthetic zones are semantic and never infer AWS ownership for SaaS.
+    const targetSpacing = allTargets.length <= 3 ? 230 : 185;
+    positionRow(allTargets, cx, 820, targetSpacing);
+
+    // Zone boundaries use generous internal padding and never nest unnecessarily.
     setZone([...sources], '__zone_onprem', 'ON-PREMISES', 'trustZone');
     setZone([...idp, ...primary], '__zone_identity', 'IDENTITY & IGA CLOUD', 'trustZone');
     setZone(allTargets, '__zone_targets', 'TARGET APPLICATIONS', 'trustZone');
-
-    // Users remain outside trust zones. Existing invalid provider boundaries are removed by backend normalization.
 }
 
 function applyHubAndSpokeTemplate(nodes, hub) {
@@ -479,6 +520,11 @@ function applyGenericTemplate(nodes) {
     [...columns.keys()].sort((a,b) => a-b).forEach((layer, i) => positionColumn(columns.get(layer), 140 + i * 220, 360, 115));
 }
 
+function applyAdaptiveViewport(pattern) {
+    const padding = pattern === 'iam' ? 95 : 65;
+    cy.fit(cy.elements(), padding);
+}
+
 function canvasAutoLayout(dsl = {}) {
     if (!cy) return;
     const nodes = cy.nodes().filter(n => n.data('type') !== 'group');
@@ -490,7 +536,6 @@ function canvasAutoLayout(dsl = {}) {
     cy.data('pattern', pattern);
     cy.scratch('architecturePattern', pattern);
 
-    // Authoritative template dispatch. Exactly one positioning strategy runs.
     if (pattern === 'iam') {
         applyIAMTemplate(nodes);
     } else if (pattern === 'event_driven') {
@@ -501,8 +546,9 @@ function canvasAutoLayout(dsl = {}) {
     }
 
     rebuildCompoundBounds();
+    styleZonesForPattern(pattern);
     styleEdgesForPattern(pattern);
-    cy.fit(cy.elements(), 65);
+    applyAdaptiveViewport(pattern);
 }
 
 // Project Logic

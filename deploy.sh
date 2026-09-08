@@ -1,53 +1,39 @@
 #!/bin/bash
-# ============================================================
-# deploy.sh — Build & deploy to Cloud Run via gcloud
-# Run this in Google Cloud Shell.
-# Required roles for your account:
-#   - Cloud Run Admin  (roles/run.admin)
-#   - Service Account User  (roles/iam.serviceAccountUser)
-#   - Storage Admin  (roles/storage.admin)  — for container registry
-# ============================================================
 
 set -e
 
 PROJECT_ID="architecture-diagram-500204"
 REGION="us-central1"
-SERVICE_NAME="diagram-generator"
 
-echo ">>> Setting project..."
-gcloud config set project $PROJECT_ID
+SERVICE_NAME="enterprise-architecture-generator"
 
-echo ">>> Enabling required APIs..."
-gcloud services enable \
-  run.googleapis.com \
-  artifactregistry.googleapis.com \
-  aiplatform.googleapis.com \
-  --project=$PROJECT_ID
-
-# Grant the Cloud Run default service account the Vertex AI User role
-# so it can access Vertex AI models via ADC (zero API keys needed).
-PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
-SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-
-echo ">>> Granting Vertex AI User role to ${SA}..."
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA}" \
-  --role="roles/aiplatform.user" \
-  --quiet
-
-echo ">>> Building and deploying to Cloud Run (this may take a few minutes)..."
-gcloud run deploy $SERVICE_NAME \
-  --source . \
-  --region=$REGION \
-  --platform=managed \
-  --allow-unauthenticated \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCP_LOCATION=${REGION},GEMINI_MODEL=gemini-1.5-flash" \
-  --project=$PROJECT_ID
+echo "======================================"
+echo "Enterprise Architecture Generator"
+echo "Deployment"
+echo "======================================"
 
 echo ""
-echo "Done! Your Cloud Run service URL:"
-gcloud run services describe $SERVICE_NAME \
-  --region=$REGION \
-  --project=$PROJECT_ID \
-  --format='value(status.url)'
+echo "Project: $PROJECT_ID"
+echo "Region: $REGION"
+echo "Service: $SERVICE_NAME"
 
+echo ""
+echo "Running tests..."
+
+python -m pytest -q
+
+echo ""
+echo "Tests passed."
+
+echo ""
+echo "Deploying to Cloud Run..."
+
+gcloud run deploy "$SERVICE_NAME" \
+  --source . \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --allow-unauthenticated \
+  --port 8080
+
+echo ""
+echo "Deployment complete."

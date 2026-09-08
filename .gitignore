@@ -1,26 +1,9 @@
-# Python virtual environment
-venv/
 .venv/
-env/
 __pycache__/
-*.py[cod]
-*$py.class
-
-# Database
-*.db
-backend/diagram_generator.db
-
-# User uploaded assets
-
-
-# Environment variables
+.pytest_cache/
+*.pyc
 .env
-.env.*
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# IDE configurations
-.vscode/
 .idea/
+.vscode/
+coverage.xml
+htmlcov/

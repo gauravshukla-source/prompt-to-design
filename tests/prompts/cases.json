@@ -1,0 +1,20 @@
+[
+  {
+    "id": "hybrid-001",
+    "prompt": "On-prem applications connect securely through VPN to cloud APIs and databases.",
+    "expected_type": "hybrid_cloud",
+    "minimum_elements": 4
+  },
+  {
+    "id": "iam-001",
+    "prompt": "Employees authenticate using Active Directory and Entra ID. Saviynt manages access to AWS and SaaS applications.",
+    "expected_type": "iam",
+    "minimum_elements": 5
+  },
+  {
+    "id": "event-001",
+    "prompt": "Order service publishes events to Kafka. Payment and Inventory services consume events.",
+    "expected_type": "event_driven",
+    "minimum_elements": 4
+  }
+]

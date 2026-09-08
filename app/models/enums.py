@@ -1,0 +1,70 @@
+from enum import Enum
+
+class ArchitectureType(str, Enum):
+    HYBRID_CLOUD = "hybrid_cloud"
+    CLOUD = "cloud"
+    IAM = "iam"
+    SECURITY = "security"
+    MICROSERVICES = "microservices"
+    EVENT_DRIVEN = "event_driven"
+    APPLICATION = "application"
+    GENERIC = "generic"
+
+class Viewpoint(str, Enum):
+    EXECUTIVE = "executive"
+    CONCEPTUAL = "conceptual"
+    DEPLOYMENT = "deployment"
+    IAM = "iam"
+    SECURITY = "security"
+    DATA_FLOW = "data_flow"
+    INTEGRATION = "integration"
+
+class DomainType(str, Enum):
+    CLOUD = "cloud"
+    ON_PREMISES = "on_premises"
+    SAAS = "saas"
+    NETWORK = "network"
+    SECURITY_ZONE = "security_zone"
+    LOGICAL = "logical"
+    OTHER = "other"
+
+class ElementType(str, Enum):
+    USER = "user"
+    APPLICATION = "application"
+    API = "api"
+    API_GATEWAY = "api_gateway"
+    DATABASE = "database"
+    CONNECTIVITY = "connectivity"
+    VPN = "vpn"
+    IDENTITY_SOURCE = "identity_source"
+    IDENTITY_PROVIDER = "identity_provider"
+    IGA = "iga"
+    PAM = "pam"
+    TARGET_SYSTEM = "target_system"
+    SERVICE = "service"
+    MESSAGE_BROKER = "message_broker"
+    LOAD_BALANCER = "load_balancer"
+    COMPUTE = "compute"
+    STORAGE = "storage"
+    SECURITY = "security"
+    GENERIC = "generic"
+
+class RelationshipType(str, Enum):
+    NETWORK = "network"
+    API = "api"
+    DATA_ACCESS = "data_access"
+    AUTHENTICATION = "authentication"
+    AUTHORIZATION = "authorization"
+    PROVISIONING = "provisioning"
+    SYNC = "sync"
+    ASYNC = "async"
+    EVENT = "event"
+    MONITORING = "monitoring"
+    GENERIC = "generic"
+
+class FlowType(str, Enum):
+    PRIMARY = "primary"
+    AUTHENTICATION = "authentication"
+    PROVISIONING = "provisioning"
+    DATA = "data"
+    EVENT = "event"

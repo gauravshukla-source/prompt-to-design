@@ -10,6 +10,6 @@ def test_view_and_graph_compilation():
     view = ViewCompiler().compile(model, Viewpoint.DEPLOYMENT)
     graph = GraphCompiler().compile(view)
 
-    assert view.layout_strategy == "domain_horizontal"
+    assert view.layout_strategy == "hybrid_horizontal"
     assert len(graph.nodes) == len(model.elements)
     assert len(graph.edges) == len(model.relationships)

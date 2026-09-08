@@ -23,5 +23,7 @@ def generate(request: GenerateRequest):
             "view": view.model_dump(),
             "graph": graph.model_dump(),
         }
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"stage": "architecture_generation", "message": str(exc)})
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail={"stage": "internal_error", "message": str(exc)})

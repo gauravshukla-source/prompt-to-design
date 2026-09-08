@@ -1,31 +1,26 @@
 from app.models.architecture import CanonicalArchitectureModel
+from app.extraction.prompt_coverage import PromptCoverage
 from .intent_agent import IntentAgent
-from .architect_agent import ArchitectAgent
+from .extraction_agent import ExtractionAgent
 from .specialist_router import SpecialistRouter
 from .reviewer_agent import ReviewerAgent
 
 class ArchitectureOrchestrator:
     def __init__(self):
-        self.intent_agent = IntentAgent()
-        self.architect_agent = ArchitectAgent()
-        self.specialist_router = SpecialistRouter()
-        self.reviewer_agent = ReviewerAgent()
+        self.intent_agent=IntentAgent(); self.extraction_agent=ExtractionAgent(); self.specialist_router=SpecialistRouter(); self.reviewer_agent=ReviewerAgent(); self.coverage=PromptCoverage()
 
     def generate(self, prompt: str) -> tuple[CanonicalArchitectureModel, dict]:
-        intent = self.intent_agent.analyze(prompt)
-        specialist = self.specialist_router.select(intent.architecture_type)
-        model = self.architect_agent.build(prompt, intent)
-        validation = self.reviewer_agent.review(model)
-
+        intent=self.intent_agent.analyze(prompt)
+        specialist=self.specialist_router.select(intent.architecture_type)
+        model=self.extraction_agent.extract(prompt,intent)
+        validation=self.reviewer_agent.review(model,prompt)
+        coverage=self.coverage.evaluate(prompt,model)
+        if not validation.valid:
+            errors=[i for i in validation.issues if i.severity=='error']
+            if errors: raise ValueError('Architecture generation failed validation: ' + '; '.join(i.message for i in errors))
         return model, {
-            "intent": {
-                "architecture_type": intent.architecture_type.value,
-                "viewpoint": intent.viewpoint.value,
-                "complexity": intent.complexity,
-                "required_concepts": intent.required_concepts,
-                "excluded_concepts": intent.excluded_concepts,
-                "primary_goal": intent.primary_goal,
-            },
-            "specialist": specialist,
-            "validation": validation.model_dump(),
+            'intent': {'architecture_type': intent.architecture_type.value,'viewpoint': intent.viewpoint.value,'complexity': intent.complexity,'required_concepts': intent.required_concepts,'excluded_concepts': intent.excluded_concepts,'primary_goal': intent.primary_goal},
+            'specialist': specialist,
+            'extraction': {'elements_found':len(model.elements),'relationships_found':len(model.relationships),'coverage_score':coverage.score,'missing_concepts':coverage.missing},
+            'validation': validation.model_dump(),
         }

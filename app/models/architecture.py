@@ -1,6 +1,7 @@
 from typing import Any
 from pydantic import BaseModel, Field
 from .enums import ArchitectureType, DomainType, ElementType, RelationshipType, FlowType, Viewpoint
+from .enterprise import Boundary, FlowMetadata
 
 class ArchitectureMeta(BaseModel):
     id: str
@@ -53,5 +54,7 @@ class CanonicalArchitectureModel(BaseModel):
     elements: list[Element] = Field(default_factory=list)
     relationships: list[Relationship] = Field(default_factory=list)
     flows: list[Flow] = Field(default_factory=list)
+    boundaries: list[Boundary] = Field(default_factory=list)
+    flow_metadata: list[FlowMetadata] = Field(default_factory=list)
     security_zones: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)

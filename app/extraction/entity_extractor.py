@@ -17,7 +17,7 @@ class EntityExtractor:
         (r'\bcloud databases?\b', 'Cloud Database', ElementType.DATABASE),
         (r'\bentra id\b|\bmicrosoft entra\b', 'Microsoft Entra ID', ElementType.IDENTITY_PROVIDER),
         (r'\bsaviynt\b', 'Saviynt IGA', ElementType.IGA),
-        (r'\baws\b|\bsaas applications?\b', 'Target Systems', ElementType.TARGET_SYSTEM),
+        (r'\bsaas applications?\b|\btarget systems?\b', 'Target Systems', ElementType.TARGET_SYSTEM),
         (r'\border service\b', 'Order Service', ElementType.SERVICE),
         (r'\bpayment(?:\s+and\s+inventory)?(?:\s+service|\s+services)?\b', 'Payment Service', ElementType.SERVICE),
         (r'\binventory(?:\s+service|\s+services)?\b', 'Inventory Service', ElementType.SERVICE),
@@ -56,6 +56,11 @@ class EntityExtractor:
                 if key not in seen:
                     seen.add(key)
                     found.append(ExtractedEntity(name=name, type=etype))
+        # AWS is a deployment domain by default, not an application component.
+        # In IAM prompts AWS can represent a governed target estate.
+        if ('aws' in text and any(x in text for x in ['saviynt', 'identity governance', 'iga', 'provision'])):
+            if not any(x.name == 'Target Systems' for x in found):
+                found.append(ExtractedEntity(name='Target Systems', type=ElementType.TARGET_SYSTEM))
         # Contextual cloud concepts such as 'cloud APIs and databases'.
         current_names={x.name for x in found}
         if 'cloud' in text and re.search(r'\bapis?\b', text) and 'Cloud API' not in current_names:

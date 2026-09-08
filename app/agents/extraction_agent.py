@@ -36,5 +36,5 @@ class ExtractionAgent:
         return CanonicalArchitectureModel(
             architecture=ArchitectureMeta(id='arch-001',name=f'{intent.architecture_type.value.replace("_"," ").title()} Architecture',type=intent.architecture_type,viewpoint=intent.viewpoint,description=prompt),
             domains=domains,elements=elements,relationships=relationships,flows=flows,
-            metadata={'generator':'deterministic-extraction-v1'}
+            metadata={'generator':'deterministic-extraction-v1','stage':'canonical'}
         )

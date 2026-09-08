@@ -4,6 +4,7 @@ from .intent_agent import IntentAgent
 from .extraction_agent import ExtractionAgent
 from .specialist_router import SpecialistRouter
 from .reviewer_agent import ReviewerAgent
+from app.intelligence.enterprise_engine import EnterpriseArchitectureIntelligence
 
 
 class ArchitectureOrchestrator:
@@ -13,12 +14,14 @@ class ArchitectureOrchestrator:
         self.specialist_router = SpecialistRouter()
         self.reviewer_agent = ReviewerAgent()
         self.coverage = PromptCoverage()
+        self.enterprise = EnterpriseArchitectureIntelligence()
 
     def generate(self, prompt: str) -> tuple[CanonicalArchitectureModel, dict]:
         intent = self.intent_agent.analyze(prompt)
         specialist = self.specialist_router.select(intent.architecture_type)
 
         model = self.extraction_agent.extract(prompt, intent)
+        model = self.enterprise.enrich(prompt, model)
         validation = self.reviewer_agent.review(model, prompt)
         coverage = self.coverage.evaluate(prompt, model)
 
@@ -60,5 +63,6 @@ class ArchitectureOrchestrator:
                 "missing_concepts": coverage.missing,
                 "semantic_matches": coverage.semantic_matches,
             },
+            "enterprise": model.metadata.get("enterprise_intelligence", {}),
             "validation": validation.model_dump(),
         }

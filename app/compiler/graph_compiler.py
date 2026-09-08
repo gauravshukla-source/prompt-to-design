@@ -43,5 +43,5 @@ class GraphCompiler:
             nodes=nodes,
             edges=edges,
             groups=groups,
-            constraints={"layout_strategy": view.layout_strategy},
+            constraints={"layout_strategy": view.layout_strategy, "boundaries": view.metadata.get("boundaries", []), "composition": view.metadata.get("composition", {})},
         )

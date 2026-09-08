@@ -22,6 +22,7 @@ if os.path.exists(env_path):
 
 import database
 import agent
+from architecture_engine import normalize_diagram
 
 app = FastAPI(title="Prompt to Design Diagram Generator API")
 
@@ -102,7 +103,7 @@ def generate_diagram(req: GenerateRequest):
     custom_icons = database.get_custom_icons()
     try:
         diagram_data = agent.generate_diagram(req.prompt, custom_icons)
-        return diagram_data
+        return normalize_diagram(diagram_data, custom_icons)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -111,7 +112,7 @@ def refine_diagram(req: RefineRequest):
     custom_icons = database.get_custom_icons()
     try:
         refined_data = agent.refine_diagram(req.prompt, req.current_diagram, custom_icons)
-        return refined_data
+        return normalize_diagram(refined_data, custom_icons)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

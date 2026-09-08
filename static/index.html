@@ -361,8 +361,9 @@
         </div>
     </div>
 
-    <!-- Architecture Renderer V2 uses native SVG; no graph-layout dependency is required. -->
+    <!-- Graph engine must load before app.js. Keep this before the application script. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.33.1/cytoscape.min.js" defer></script>
     <!-- Custom Application JS -->
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js" defer></script>
 </body>
 </html>

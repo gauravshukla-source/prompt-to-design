@@ -66,18 +66,39 @@ let currentDiagramId = "";
 let currentVersion = 1;
 let customIcons = [];
 
-// Initialize Page
-document.addEventListener("DOMContentLoaded", () => {
-    lucide.createIcons();
-    initTabs();
-    initAuthStatus();
-    initCanvas();
-    loadProjects();
-    loadCustomIcons();
-    populateToolbox();
-    setupFormListeners();
-    setupSelectionListeners();
-});
+// Application bootstrap. Dependencies and DOM are validated before anything touches the canvas.
+let appInitialized = false;
+
+async function initializeApplication() {
+    if (appInitialized) return;
+    appInitialized = true;
+
+    if (typeof window.cytoscape !== "function") {
+        console.error("Cytoscape failed to load. The canvas will not start.");
+        appendChatMessage("Diagram engine failed to load. Please refresh and verify network access to the Cytoscape CDN.", "bot");
+        appInitialized = false;
+        return;
+    }
+
+    try {
+        if (window.lucide?.createIcons) window.window.lucide?.createIcons?.();
+        initTabs();
+        initCanvas();
+        if (!cy) throw new Error("Cytoscape canvas initialization returned no instance.");
+
+        setupFormListeners();
+        setupSelectionListeners();
+        populateToolbox();
+        await Promise.all([initAuthStatus(), loadCustomIcons(), loadProjects()]);
+        updateParentSelectOptions();
+        populateInspectorIconSelect();
+    } catch (error) {
+        console.error("Application initialization failed", error);
+        appInitialized = false;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", initializeApplication, { once: true });
 
 // Tab navigation logic
 function initTabs() {
@@ -156,124 +177,82 @@ async function initAuthStatus() {
 
 // Initialize Cytoscape canvas
 function initCanvas() {
-    cy = cytoscape({
-        container: document.getElementById('cy'),
+    const container = document.getElementById("cy");
+    if (!container) throw new Error("Canvas container #cy was not found.");
+    if (typeof window.cytoscape !== "function") throw new Error("Cytoscape library is not loaded.");
+
+    cy = window.cytoscape({
+        container,
+        boxSelectionEnabled: true,
+        selectionType: "single",
+        wheelSensitivity: 0.18,
         style: [
-            {
-                selector: 'node',
-                style: {
-                    'label': 'data(label)',
-                    'color': '#cbd5e1',
-                    'font-size': '10px',
-                    'font-family': 'Inter, sans-serif',
-                    'text-valign': 'bottom',
-                    'text-margin-y': '6px',
-                    'background-color': '#1c1c1e',
-                    'border-width': '2px',
-                    'border-color': '#3a3a3c',
-                    'width': '45px',
-                    'height': '45px',
-                    'shape': 'roundrectangle',
-                    'background-image': 'data(icon_url)',
-                    'background-fit': 'contain',
-                    'background-width': '65%',
-                    'background-height': '65%',
-                    'text-wrap': 'wrap',
-                    'text-max-width': '80px',
-                    'transition-property': 'background-color, border-color',
-                    'transition-duration': '0.2s'
-                }
-            },
-            {
-                selector: 'node:selected',
-                style: {
-                    'border-color': '#0070f3',
-                    'border-width': '3px',
-                    'background-color': '#2c2c2e'
-                }
-            },
-            {
-                selector: 'node[type="group"]',
-                style: {
-                    'label': 'data(label)',
-                    'text-valign': 'top',
-                    'text-halign': 'center',
-                    'text-margin-y': '-10px',
-                    'background-color': 'rgba(255, 255, 255, 0.02)',
-                    'border-style': 'dashed',
-                    'border-width': '1.5px',
-                    'border-color': '#4a4a4c',
-                    'shape': 'roundrectangle',
-                    'padding': '24px',
-                    'background-image': 'none'
-                }
-            },
-            {
-                selector: 'node[type="group"]:selected',
-                style: {
-                    'border-color': '#0070f3',
-                    'border-width': '2px',
-                    'background-color': 'rgba(0, 112, 243, 0.05)'
-                }
-            },
-            {
-                selector: 'edge',
-                style: {
-                    'label': 'data(label)',
-                    'font-size': '9px',
-                    'font-family': 'Inter, sans-serif',
-                    'color': '#94a3b8',
-                    'width': 2,
-                    'line-color': '#4a4a4c',
-                    'target-arrow-color': '#4a4a4c',
-                    'target-arrow-shape': 'triangle',
-                    'curve-style': 'bezier',
-                    'text-background-opacity': 0.85,
-                    'text-background-color': '#0c0c0e',
-                    'text-background-padding': '3px',
-                    'text-background-shape': 'roundrectangle'
-                }
-            },
-            {
-                selector: 'edge:selected',
-                style: {
-                    'line-color': '#0070f3',
-                    'target-arrow-color': '#0070f3',
-                    'width': 3
-                }
-            }
-        ],
-        layout: {
-            name: 'preset'
-        }
+            { selector: "node", style: {
+                "label": "data(label)", "color": "#cbd5e1", "font-size": "10px",
+                "font-family": "Inter, sans-serif", "text-valign": "bottom", "text-margin-y": "6px",
+                "background-color": "#1c1c1e", "border-width": "2px", "border-color": "#3a3a3c",
+                "width": "52px", "height": "52px", "shape": "roundrectangle",
+                "background-image": "data(icon_url)", "background-fit": "contain",
+                "background-width": "68%", "background-height": "68%",
+                "text-wrap": "wrap", "text-max-width": "110px"
+            }},
+            { selector: "node:selected", style: { "border-color": "#3b82f6", "border-width": "3px", "background-color": "#252b38" }},
+            { selector: 'node[type = "group"]', style: {
+                "label": "data(label)", "text-valign": "top", "text-halign": "left",
+                "text-margin-x": "12px", "text-margin-y": "10px", "color": "#cbd5e1",
+                "font-size": "11px", "font-weight": "bold", "background-color": "#1f2937",
+                "background-opacity": 0.55, "border-style": "dashed", "border-width": "1.5px",
+                "border-color": "#64748b", "shape": "roundrectangle", "padding": "38px",
+                "background-image": "none", "compound-sizing-wrt-labels": "include"
+            }},
+            { selector: 'node[type = "group"]:selected', style: { "border-color": "#60a5fa", "border-width": "2px" }},
+            { selector: "edge", style: {
+                "label": "data(label)", "font-size": "8px", "font-family": "Inter, sans-serif",
+                "color": "#94a3b8", "width": 2, "line-color": "#64748b",
+                "target-arrow-color": "#64748b", "target-arrow-shape": "triangle",
+                "curve-style": "bezier", "text-background-color": "#111827",
+                "text-background-opacity": 0.9, "text-background-padding": "2px"
+            }},
+            { selector: 'edge[encrypted = true]', style: { "line-color": "#22c55e", "target-arrow-color": "#22c55e" }}
+        ]
     });
 
-    // Hide/show empty state based on elements
-    cy.on('add remove', () => {
+    cy.on("add remove", () => {
         const emptyState = document.getElementById("empty-state");
-        if (cy.elements().length > 0) {
-            emptyState.classList.add("hidden");
-        } else {
-            emptyState.classList.remove("hidden");
-        }
+        if (emptyState) emptyState.classList.toggle("hidden", cy.nodes('[type != "group"]').length > 0);
         updateParentSelectOptions();
     });
 }
 
 // Canvas Helpers
-function canvasZoomIn() { cy.zoom(cy.zoom() * 1.2); }
-function canvasZoomOut() { cy.zoom(cy.zoom() * 0.8); }
-function canvasFit() { cy.fit(); }
+function canvasZoomIn() { if (cy) cy.zoom({ level: cy.zoom() * 1.2, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } }); }
+function canvasZoomOut() { if (cy) cy.zoom({ level: cy.zoom() * 0.8, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } }); }
+function canvasFit() { if (cy && cy.elements().length) cy.fit(cy.elements(), 50); }
+
+const CATEGORY_LAYER = { external: 0, user: 0, client: 0, saas: 0, edge: 1, network: 1, gateway: 1, application: 2, compute: 2, service: 2, general: 2, integration: 3, messaging: 3, data: 4, database: 4, storage: 4, identity: 5, security: 5, observability: 6 };
+
 function canvasAutoLayout() {
-    cy.layout({
-        name: 'dagre',
-        rankDir: 'LR',
-        nodeSep: 50,
-        edgeSep: 30,
-        rankSep: 80,
-        animate: true,
-        animationDuration: 400
-    }).run();
+    if (!cy) return;
+    const nodes = cy.nodes().filter(n => n.data("type") !== "group");
+    if (!nodes.length) return;
+
+    const columns = new Map();
+    nodes.forEach(node => {
+        const explicit = Number(node.data("layer"));
+        const layer = Number.isFinite(explicit) ? explicit : (CATEGORY_LAYER[String(node.data("category") || "general").toLowerCase()] ?? 2);
+        if (!columns.has(layer)) columns.set(layer, []);
+        columns.get(layer).push(node);
+    });
+
+    [...columns.keys()].sort((a,b) => a-b).forEach(layer => {
+        const column = columns.get(layer).sort((a,b) => String(a.data("label")).localeCompare(String(b.data("label"))));
+        const spacing = 120;
+        const startY = 120 - ((column.length - 1) * spacing / 2);
+        column.forEach((node, index) => node.position({ x: 180 + layer * 230, y: Math.max(100, startY + index * spacing + 250) }));
+    });
+
+    cy.resize();
+    requestAnimationFrame(() => canvasFit());
 }
 
 // Project Logic
@@ -317,8 +296,8 @@ async function loadProjects() {
 }
 
 const btnNewProj = document.getElementById("btn-new-project");
-btnNewProj.addEventListener("click", () => {
-    document.getElementById("new-project-modal").classList.remove("hidden");
+btnNewProj?.addEventListener("click", () => {
+    document.getElementById("new-project-modal")?.classList.remove("hidden");
 });
 
 function closeNewProjectModal() {
@@ -388,6 +367,7 @@ async function loadDiagram(diagramId) {
 
 // Convert our DSL schema to Cytoscape format and render
 function renderTopology(dsl) {
+    if (!cy) throw new Error("Diagram canvas is not initialized.");
     cy.elements().remove();
     
     const elements = [];
@@ -454,6 +434,7 @@ function renderTopology(dsl) {
 
 // Generate topology back to DSL format for storage / refinement
 function exportTopologyJSON() {
+    if (!cy) return { diagramType: "architecture", groups: [], nodes: [], edges: [] };
     const nodes = [];
     const groups = [];
     const edges = [];
@@ -578,7 +559,7 @@ function renderCustomIconList() {
         `;
         list.appendChild(item);
     });
-    lucide.createIcons();
+    window.lucide?.createIcons?.();
 }
 
 async function deleteCustomIcon(iconId) {
@@ -598,8 +579,12 @@ const btnGen = document.getElementById("btn-generate");
 const promptInput = document.getElementById("prompt-input");
 const loader = document.getElementById("loader");
 
-btnGen.addEventListener("click", async () => {
-    const prompt = promptInput.value.trim();
+btnGen?.addEventListener("click", async () => {
+    if (!cy) {
+        appendChatMessage("Diagram engine is not ready yet. Please refresh the page.", "bot");
+        return;
+    }
+    const prompt = promptInput?.value?.trim() || "";
     if (!prompt) return;
     
     loader.classList.remove("hidden");
@@ -664,7 +649,7 @@ function appendChatMessage(text, sender) {
     }
     list.appendChild(item);
     list.scrollTop = list.scrollHeight;
-    lucide.createIcons();
+    window.lucide?.createIcons?.();
 }
 
 // Form Upload for Custom Icon
@@ -804,6 +789,7 @@ function addCanvasGroup(groupType, label) {
 // Update parent list selectors in the property inspector
 function updateParentSelectOptions() {
     const select = document.getElementById("inspect-node-parent");
+    if (!select || !cy) return;
     const currentVal = select.value;
     select.innerHTML = '<option value="">None (Root level)</option>';
     
@@ -823,6 +809,7 @@ function updateParentSelectOptions() {
 let selectedElement = null;
 
 function setupSelectionListeners() {
+    if (!cy) return;
     cy.on('select', 'node', (evt) => {
         selectedElement = evt.target;
         showNodeInspector(selectedElement);
@@ -979,7 +966,7 @@ function deleteSelectedElement() {
 
 // Export Diagram to local assets
 function exportDiagram(format) {
-    if (cy.elements().length === 0) {
+    if (!cy || cy.elements().length === 0) {
         alert("Nothing to export.");
         return;
     }

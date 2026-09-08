@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Enterprise Architecture Generator 4.0</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header>
+    <h1>Enterprise Architecture Generator 4.0</h1>
+    <span id="status">Ready</span>
+  </header>
+
+  <main>
+    <section class="prompt-panel">
+      <textarea id="prompt">On-prem applications connect securely through VPN to cloud APIs and databases.</textarea>
+      <div class="actions">
+        <select id="viewpoint">
+          <option value="">Auto View</option>
+          <option value="conceptual">Conceptual</option>
+          <option value="deployment">Deployment</option>
+          <option value="iam">IAM</option>
+          <option value="security">Security</option>
+          <option value="data_flow">Data Flow</option>
+          <option value="integration">Integration</option>
+        </select>
+        <button id="generate">Generate</button>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="canvas-panel">
+        <h2>Architecture Graph</h2>
+        <div id="canvas"></div>
+      </div>
+      <aside class="inspector">
+        <h2>Validation</h2>
+        <pre id="validation">No architecture generated.</pre>
+      </aside>
+    </section>
+  </main>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

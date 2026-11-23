@@ -1,68 +1,107 @@
 """
 LLM-powered entity and relationship extractor.
-Falls back gracefully to the deterministic extractor if LLM is unavailable.
+Handles ANY user prompt: brief notes, typos, complex multi-cloud systems, or abstract scenarios.
+Synthesizes a complete, standard-compliant enterprise architecture with proper layers.
 """
 import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-ENTITY_EXTRACTION_PROMPT = '''
-You are an enterprise architecture expert. Extract all architecture components from the following prompt.
+SYSTEM_INSTRUCTION = """
+You are a Principal Enterprise Solutions Architect.
+Your task is to take ANY natural language prompt and generate a complete, publication-quality architecture diagram model.
 
-Prompt: "{prompt}"
+CRITICAL RULES:
+1. Handle ANY prompt: even if the prompt is short (e.g. "Saviynt EIC integrates with Active Directive on premise"), has typos (e.g. "Active Directive" -> "Active Directory", "entra" -> "Microsoft Entra ID"), or only names 1 or 2 systems.
+2. Always produce a complete, multi-tier enterprise architecture with 4 to 10 components.
+3. Automatically infer complementary components if the user only specified part of the system (e.g., if Saviynt EIC and on-prem Active Directory are mentioned, also include: Enterprise Users/Admins, Secure Connector/Gateway/VPN, Target Applications, and Cloud Control Plane).
+4. Assign every component a valid "type" from:
+   - user
+   - application
+   - api
+   - api_gateway
+   - database
+   - service
+   - message_broker
+   - identity_source
+   - identity_provider
+   - iga
+   - pam
+   - target_system
+   - vpn
+   - load_balancer
+   - security
+   - storage
+   - compute
+   - generic
+5. Define directional relationships between components with realistic enterprise protocols (HTTPS, LDAP, LDAPS, SCIM, REST, SQL, AMQP, OAuth2, SAML, gRPC).
+6. Ensure EVERY component has at least one connection. Never leave orphan nodes.
+"""
 
-For each component, return an object with:
-- "name": display name (e.g. "Microsoft Entra ID", "Kafka", "API Gateway")
-- "type": one of: user, application, api, api_gateway, database, service, message_broker, identity_source, identity_provider, iga, pam, target_system, vpn, load_balancer, security, storage, compute, generic
-- "technology": specific tech name if known (e.g. "PostgreSQL", "Apache Kafka"), or null
-- "provider": cloud provider if known ("aws", "azure", "gcp", "on_premises"), or null
+ARCHITECTURE_SYNTHESIS_PROMPT = """{system_instruction}
 
-Return a JSON array of these objects. Include 3-12 components. Only include components actually mentioned or strongly implied by the prompt.
-'''
+User Prompt: "{prompt}"
 
-RELATIONSHIP_EXTRACTION_PROMPT = '''
-You are an enterprise architecture expert. Given these architecture components:
-{elements_json}
+Return a single JSON object with this EXACT structure:
+{{
+  "architecture_name": "Title of Architecture",
+  "components": [
+    {{
+      "id": "unique-slug-id",
+      "name": "Component Display Name",
+      "type": "valid_type_from_list",
+      "technology": "Specific Technology (e.g. Saviynt, Active Directory, AWS, etc.)",
+      "provider": "aws | azure | gcp | on_premises | saas"
+    }}
+  ],
+  "relationships": [
+    {{
+      "source": "source-component-id",
+      "target": "target-component-id",
+      "type": "api | authentication | authorization | provisioning | sync | data_access | network | event | generic",
+      "protocol": "HTTPS | LDAP | SCIM | REST | SQL | etc.",
+      "label": "Action label (e.g. Provision, Sync, Authenticate, HTTPS)"
+    }}
+  ]
+}}
 
-And this original prompt:
-"{prompt}"
+Return ONLY valid JSON. No markdown fences, no explanation.
+"""
 
-Infer all meaningful relationships between components. For each relationship return:
-- "source": id of source component (use the "id" field from above)
-- "target": id of target component
-- "type": one of: api, authentication, authorization, provisioning, sync, data_access, network, event, async, generic
-- "protocol": protocol used (e.g. "HTTPS", "LDAP", "AMQP", "SCIM", "SQL", "OAuth2"), or null
-- "label": short human-readable label (e.g. "Authenticate", "Provision", "Publish", "HTTPS")
 
-Return a JSON array of relationships. Include only relationships justified by the prompt or standard architecture patterns.
-'''
+def extract_architecture(prompt: str) -> dict[str, Any] | None:
+    """
+    Call LLM to extract full architecture components and relationships for ANY prompt.
+    Returns dict with 'components' and 'relationships', or None if unavailable.
+    """
+    from app.llm.client import generate_json
+
+    formatted = ARCHITECTURE_SYNTHESIS_PROMPT.format(
+        system_instruction=SYSTEM_INSTRUCTION,
+        prompt=prompt,
+    )
+    try:
+        result = generate_json(formatted)
+        if isinstance(result, dict) and "components" in result and len(result["components"]) >= 2:
+            return result
+    except Exception as exc:
+        logger.info("LLM full architecture extraction failed: %s", exc)
+
+    return None
 
 
 def extract_entities(prompt: str) -> list[dict[str, Any]]:
-    """Use LLM to extract architecture entities from a prompt."""
-    from app.llm.client import generate_json
-    formatted = ENTITY_EXTRACTION_PROMPT.format(prompt=prompt)
-    result = generate_json(formatted)
-    if isinstance(result, list):
-        return result
-    if isinstance(result, dict) and "components" in result:
-        return result["components"]
+    """Legacy helper for entity extraction."""
+    arch = extract_architecture(prompt)
+    if arch and "components" in arch:
+        return arch["components"]
     return []
 
 
 def extract_relationships(prompt: str, elements: list[dict]) -> list[dict[str, Any]]:
-    """Use LLM to extract relationships from a prompt given a list of elements."""
-    from app.llm.client import generate_json
-    import json
-    elements_json = json.dumps(elements, indent=2)
-    formatted = RELATIONSHIP_EXTRACTION_PROMPT.format(
-        elements_json=elements_json,
-        prompt=prompt,
-    )
-    result = generate_json(formatted)
-    if isinstance(result, list):
-        return result
-    if isinstance(result, dict) and "relationships" in result:
-        return result["relationships"]
+    """Legacy helper for relationship extraction."""
+    arch = extract_architecture(prompt)
+    if arch and "relationships" in arch:
+        return arch["relationships"]
     return []

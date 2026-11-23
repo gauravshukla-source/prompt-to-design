@@ -24,27 +24,31 @@ class ExtractionAgent:
 
     @staticmethod
     def _slug(value: str) -> str:
-        return re.sub(r'[^a-z0-9]+', '-', value.lower()).strip('-')
+        s = re.sub(r'[^a-z0-9]+', '-', value.lower()).strip('-')
+        return s or 'component'
 
     def _llm_extract(self, prompt: str, intent: IntentResult) -> CanonicalArchitectureModel | None:
-        """Attempt LLM-powered extraction. Returns None on any failure so deterministic fallback runs."""
+        """Attempt LLM-powered extraction for ANY prompt. Returns None on failure."""
         try:
-            from app.llm.llm_extractor import extract_entities, extract_relationships
+            from app.llm.llm_extractor import extract_architecture
 
-            raw_entities = extract_entities(prompt)
+            arch = extract_architecture(prompt)
+            if not arch or "components" not in arch:
+                return None
+
+            raw_entities = arch.get("components", [])
             if not raw_entities or len(raw_entities) < 2:
-                logger.debug("LLM returned fewer than 2 entities; falling back to deterministic")
                 return None
 
             elements: list[Element] = []
             used: set[str] = set()
-            elem_dicts: list[dict] = []
 
             for raw in raw_entities:
                 name = str(raw.get("name", "")).strip()
                 if not name:
                     continue
-                eid = self._slug(name)
+                eid = raw.get("id") or self._slug(name)
+                eid = self._slug(eid)
                 base = eid
                 i = 2
                 while eid in used:
@@ -52,7 +56,6 @@ class ExtractionAgent:
                     i += 1
                 used.add(eid)
 
-                # Map LLM type string to ElementType
                 type_str = str(raw.get("type", "generic")).lower().replace("-", "_")
                 try:
                     etype = ElementType(type_str)
@@ -67,21 +70,20 @@ class ExtractionAgent:
                     provider=raw.get("provider"),
                 )
                 elements.append(elem)
-                elem_dicts.append({"id": eid, "name": name, "type": type_str})
 
             if len(elements) < 2:
                 return None
 
             domains, elements = self.domains.resolve(prompt, elements)
 
-            # LLM relationship extraction
-            raw_rels = extract_relationships(prompt, elem_dicts)
+            # Build relationships
+            raw_rels = arch.get("relationships", [])
             id_set = {e.id for e in elements}
             relationships: list[Relationship] = []
 
             for i, raw in enumerate(raw_rels or []):
-                src = str(raw.get("source", "")).strip()
-                tgt = str(raw.get("target", "")).strip()
+                src = self._slug(str(raw.get("source", "")).strip())
+                tgt = self._slug(str(raw.get("target", "")).strip())
                 if src not in id_set or tgt not in id_set or src == tgt:
                     continue
                 type_str = str(raw.get("type", "generic")).lower().replace("-", "_")
@@ -99,19 +101,18 @@ class ExtractionAgent:
                     label=raw.get("label"),
                 ))
 
-            # If LLM didn't return relationships, try deterministic relationship extractor on elements
+            # If LLM didn't return relationships, use the universal relationship extractor
             if not relationships:
                 relationships = self.relationships.extract(prompt, elements)
 
             if not relationships:
-                logger.debug("LLM produced no valid relationships; falling back to deterministic")
                 return None
 
             flows = self.flows.build(relationships)
             return CanonicalArchitectureModel(
                 architecture=ArchitectureMeta(
                     id="arch-001",
-                    name=f"{intent.architecture_type.value.replace('_', ' ').title()} Architecture",
+                    name=arch.get("architecture_name") or f"{intent.architecture_type.value.replace('_', ' ').title()} Architecture",
                     type=intent.architecture_type,
                     viewpoint=intent.viewpoint,
                     description=prompt,
@@ -120,29 +121,26 @@ class ExtractionAgent:
                 elements=elements,
                 relationships=relationships,
                 flows=flows,
-                metadata={"generator": "llm-extraction-v1", "stage": "canonical"},
+                metadata={"generator": "llm-architecture-v1", "stage": "canonical"},
             )
 
         except Exception as exc:
-            logger.info("LLM extraction not available or failed (%s); using deterministic extraction", exc)
+            logger.info("LLM extraction failed (%s); using resilient deterministic extraction", exc)
             return None
 
     def extract(self, prompt: str, intent: IntentResult) -> CanonicalArchitectureModel:
         # Try LLM first if configured
         llm_result = self._llm_extract(prompt, intent)
         if llm_result is not None:
-            logger.info("LLM extraction succeeded (%d elements, %d relationships)",
+            logger.info("LLM extraction succeeded with %d elements and %d relationships",
                         len(llm_result.elements), len(llm_result.relationships))
             return llm_result
 
-        # Deterministic extraction fallback
+        # Resilient Deterministic Extractor (guaranteed to succeed on ANY prompt)
         extracted = self.entities.extract(prompt)
-        if len(extracted) < 2:
-            raise ArchitectureExtractionError(
-                "Unable to extract at least two architecture components from the prompt"
-            )
         elements: list[Element] = []
         used: set[str] = set()
+
         for x in extracted:
             eid = self._slug(x.name)
             base = eid
@@ -151,14 +149,18 @@ class ExtractionAgent:
                 eid = f"{base}-{i}"
                 i += 1
             used.add(eid)
-            elements.append(Element(id=eid, name=x.name, type=x.type, technology=x.technology))
+            elements.append(Element(
+                id=eid,
+                name=x.name,
+                type=x.type,
+                technology=x.technology,
+                provider=x.provider
+            ))
+
         domains, elements = self.domains.resolve(prompt, elements)
         relationships = self.relationships.extract(prompt, elements)
-        if not relationships:
-            raise ArchitectureExtractionError(
-                "Components were extracted but no meaningful relationships could be derived"
-            )
-        flows = self.flows.build(relationships)
+        flows = self.flows.build(relationships) if relationships else []
+
         return CanonicalArchitectureModel(
             architecture=ArchitectureMeta(
                 id="arch-001",
@@ -171,5 +173,5 @@ class ExtractionAgent:
             elements=elements,
             relationships=relationships,
             flows=flows,
-            metadata={"generator": "deterministic-extraction-v1", "stage": "canonical"},
+            metadata={"generator": "deterministic-extraction-v2", "stage": "canonical"},
         )

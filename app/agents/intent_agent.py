@@ -14,23 +14,27 @@ class IntentAgent:
     def analyze(self, prompt: str) -> IntentResult:
         p = prompt.lower()
 
-        if any(x in p for x in ["active directory", "entra", "saviynt", "identity", "iga", "pam"]):
+        if any(x in p for x in [
+            "active directory", "active directive", "entra", "saviynt", "eic",
+            "identity", "iga", "pam", "okta", "ldap", "cyberark", "sso", "scim",
+            "provision", "governance", "directory"
+        ]):
             architecture_type = ArchitectureType.IAM
             viewpoint = Viewpoint.IAM
             concepts = ["user", "identity", "target_system"]
-        elif any(x in p for x in ["zero trust", "firewall", "siem", "security"]):
+        elif any(x in p for x in ["zero trust", "firewall", "siem", "security", "waf"]):
             architecture_type = ArchitectureType.SECURITY
             viewpoint = Viewpoint.SECURITY
             concepts = ["user", "security", "application"]
-        elif any(x in p for x in ["kafka", "event", "publish", "consume"]):
+        elif any(x in p for x in ["kafka", "event", "publish", "consume", "broker", "rabbitmq"]):
             architecture_type = ArchitectureType.EVENT_DRIVEN
             viewpoint = Viewpoint.INTEGRATION
             concepts = ["producer", "broker", "consumer"]
-        elif any(x in p for x in ["microservice", "microservices", "kubernetes"]):
+        elif any(x in p for x in ["microservice", "microservices", "kubernetes", "k8s", "container"]):
             architecture_type = ArchitectureType.MICROSERVICES
             viewpoint = Viewpoint.DEPLOYMENT
             concepts = ["client", "gateway", "service"]
-        elif any(x in p for x in ["vpn", "on-prem", "on premises", "hybrid cloud"]):
+        elif any(x in p for x in ["vpn", "on-prem", "on premise", "on-premises", "hybrid cloud", "expressroute"]):
             architecture_type = ArchitectureType.HYBRID_CLOUD
             viewpoint = Viewpoint.DEPLOYMENT
             concepts = ["on_premises", "vpn", "cloud"]
@@ -50,5 +54,5 @@ class IntentAgent:
             complexity=complexity,
             required_concepts=concepts,
             excluded_concepts=[],
-            primary_goal="Generate an architecture that contains only concepts justified by the prompt.",
+            primary_goal="Generate an enterprise architecture that models the systems and interactions described in the prompt.",
         )

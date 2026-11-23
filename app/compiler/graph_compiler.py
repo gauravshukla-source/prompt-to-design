@@ -1,6 +1,7 @@
 from app.models.view import ViewModel, GraphModel
 from app.tools.icon_registry import get_icon
 
+
 class GraphCompiler:
     def compile(self, view: ViewModel) -> GraphModel:
         nodes = [
@@ -10,7 +11,11 @@ class GraphCompiler:
                     "label": node.label,
                     "type": node.type,
                     "domain_id": node.domain_id,
-                    "icon": get_icon(node.type),
+                    "icon": get_icon(
+                        node.type,
+                        technology=(node.metadata or {}).get("technology"),
+                        name=node.label,
+                    ),
                 }
             }
             for node in view.nodes
@@ -43,5 +48,9 @@ class GraphCompiler:
             nodes=nodes,
             edges=edges,
             groups=groups,
-            constraints={"layout_strategy": view.layout_strategy, "boundaries": view.metadata.get("boundaries", []), "composition": view.metadata.get("composition", {})},
+            constraints={
+                "layout_strategy": view.layout_strategy,
+                "boundaries": view.metadata.get("boundaries", []),
+                "composition": view.metadata.get("composition", {}),
+            },
         )

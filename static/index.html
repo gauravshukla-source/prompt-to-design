@@ -3,40 +3,67 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Enterprise Architecture Generator 4.0</title>
+  <title>Enterprise Architecture Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
   <header>
-    <h1>Enterprise Architecture Generator 4.0</h1>
-    <span id="status">Ready</span>
+    <div class="header-brand">
+      <div class="brand-icon">⬡</div>
+      <div>
+        <h1>Enterprise Architecture Generator</h1>
+        <span class="header-subtitle">Standard-compliant enterprise architecture visualization</span>
+      </div>
+    </div>
+    <div class="header-meta">
+      <span id="llm-badge" class="badge badge-neutral">AI: Checking…</span>
+      <span id="status" class="status-text">Ready</span>
+    </div>
   </header>
 
   <main>
     <section class="prompt-panel">
-      <textarea id="prompt">On-prem applications connect securely through VPN to cloud APIs and databases.</textarea>
-      <div class="actions">
-        <select id="viewpoint">
+      <div class="prompt-header">
+        <label for="prompt">Architecture Prompt</label>
+        <select id="viewpoint" class="viewpoint-select">
           <option value="">Auto View</option>
           <option value="conceptual">Conceptual</option>
           <option value="deployment">Deployment</option>
-          <option value="iam">IAM</option>
+          <option value="iam">IAM / Identity</option>
           <option value="security">Security</option>
           <option value="data_flow">Data Flow</option>
           <option value="integration">Integration</option>
         </select>
-        <button id="generate">Generate</button>
+      </div>
+      <textarea id="prompt" rows="3" placeholder="Describe your architecture… e.g. 'Saviynt IGA integrates with Microsoft Entra ID and Active Directory to provision users to SaaS applications via SCIM'"></textarea>
+      <div class="actions">
+        <button id="generate" class="btn-primary">
+          <span class="btn-icon" id="generate-icon">▶</span>
+          Generate Diagram
+        </button>
+        <button id="export-svg" class="btn-secondary" disabled>⬇ Export SVG</button>
+        <button id="clear-btn" class="btn-ghost">✕ Clear</button>
       </div>
     </section>
 
     <section class="workspace">
       <div class="canvas-panel">
-        <h2>Architecture Graph</h2>
-        <div id="canvas"></div>
+        <div class="canvas-toolbar">
+          <span class="canvas-title">Architecture Graph</span>
+          <div id="generation-info" class="generation-info hidden"></div>
+        </div>
+        <div id="canvas">
+          <div class="empty-state" id="empty-hint">
+            Enter an architecture prompt above and click <strong>Generate Diagram</strong> to produce a standard diagram.
+          </div>
+        </div>
       </div>
       <aside class="inspector">
-        <h2>Validation</h2>
-        <pre id="validation">No architecture generated.</pre>
+        <h2>Architecture Analysis</h2>
+        <div id="validation"><p class="muted">No diagram generated yet.</p></div>
       </aside>
     </section>
   </main>

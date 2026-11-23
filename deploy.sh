@@ -5,7 +5,7 @@ set -e
 PROJECT_ID="architecture-diagram-500204"
 REGION="us-central1"
 SERVICE_NAME="diagram-generator"
-MODEL="gemini-1.5-flash"
+MODEL="gemini-2.5-flash"
 
 echo "======================================"
 echo "Enterprise Architecture Generator"

@@ -8,7 +8,7 @@ Configured via environment variables in .env:
   LLM_PROVIDER=vertex_ai   # or gemini_api
   GOOGLE_CLOUD_PROJECT=architecture-diagram-500204
   GCP_LOCATION=us-central1
-  GEMINI_MODEL=gemini-1.5-flash
+  GEMINI_MODEL=gemini-2.5-flash
   GEMINI_API_KEY=...        # only if LLM_PROVIDER=gemini_api
 """
 import os
@@ -18,19 +18,19 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Models verified on Vertex AI and Gemini APIs
+# Models prioritized from newest/most capable down to universal fallbacks
 _MODEL_FALLBACKS = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
     "gemini-1.5-flash",
     "gemini-1.5-pro",
-    "gemini-2.0-flash",
 ]
 
 
 def _get_model_name() -> str:
-    configured = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
-    # Guard against non-existent or experimental model strings
+    configured = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
     if not configured or "3.8" in configured:
-        return "gemini-1.5-flash"
+        return "gemini-2.5-flash"
     return configured
 
 
@@ -57,7 +57,7 @@ def generate_json(prompt: str, schema_hint: str = "") -> dict[str, Any] | list[A
 
 
 def _call_vertex(prompt: str) -> dict | list:
-    """Call Vertex AI using ADC (Application Default Credentials)."""
+    """Call Vertex AI using ADC (Application Default Credentials) with automated model fallback."""
     project = os.getenv("GOOGLE_CLOUD_PROJECT", "").strip()
     location = os.getenv("GCP_LOCATION", "us-central1").strip()
     primary_model = _get_model_name()
@@ -80,10 +80,10 @@ def _call_vertex(prompt: str) -> dict | list:
                     contents=prompt,
                 )
                 if response and response.text:
+                    logger.info("Vertex AI generation succeeded using model: %s", model)
                     return _parse_json_response(response.text)
             except Exception as exc:
                 errors.append(f"google.genai [{model}]: {exc}")
-                # If it's not a 404/not-found, try next model or fallback SDK
                 continue
     except ImportError:
         pass
@@ -100,6 +100,7 @@ def _call_vertex(prompt: str) -> dict | list:
                 gm = GenerativeModel(model)
                 response = gm.generate_content(prompt)
                 if response and response.text:
+                    logger.info("Vertex AI (vertexai SDK) generation succeeded using model: %s", model)
                     return _parse_json_response(response.text)
             except Exception as exc:
                 errors.append(f"vertexai [{model}]: {exc}")
@@ -117,11 +118,11 @@ def _call_vertex(prompt: str) -> dict | list:
         except Exception as exc:
             errors.append(f"api_key fallback: {exc}")
 
-    raise RuntimeError("All Vertex AI attempts failed: " + "; ".join(errors))
+    raise RuntimeError("All Vertex AI model attempts failed: " + "; ".join(errors))
 
 
 def _call_gemini_api(prompt: str) -> dict | list:
-    """Call Google Gemini API using an API key."""
+    """Call Google Gemini API using an API key with automated model fallback."""
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not configured in environment")
@@ -137,6 +138,7 @@ def _call_gemini_api(prompt: str) -> dict | list:
             try:
                 response = client.models.generate_content(model=model, contents=prompt)
                 if response and response.text:
+                    logger.info("Gemini API generation succeeded using model: %s", model)
                     return _parse_json_response(response.text)
             except Exception as exc:
                 errors.append(f"genai [{model}]: {exc}")
@@ -151,6 +153,7 @@ def _call_gemini_api(prompt: str) -> dict | list:
             gm = legacy_genai.GenerativeModel(model)
             response = gm.generate_content(prompt)
             if response and response.text:
+                logger.info("Gemini API (legacy) generation succeeded using model: %s", model)
                 return _parse_json_response(response.text)
         except Exception as exc:
             errors.append(f"legacy_genai [{model}]: {exc}")

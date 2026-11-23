@@ -21,6 +21,8 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GCP_LOCATION=${_LOCATION},GEMINI_MODEL=gemini-1.5-flash,LLM_PROVIDER=vertex_ai'
 
 substitutions:
   _LOCATION: us-central1
